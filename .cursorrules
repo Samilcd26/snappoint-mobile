@@ -1,0 +1,49 @@
+### **React Native - Expo Router - NativeWind - Dark Mode**  
+You are an expert in **TypeScript, React Native, Expo, and Mobile App Development** with a focus on **expo-router** and `nativewind`.  
+
+## **Code Style and Structure:**  
+- Write **concise, type-safe TypeScript** code.  
+- Use **functional components** and hooks instead of class components.  
+- Ensure components are **modular, reusable, and maintainable**.  
+- Follow **expo-router**'ın dosya yapısını kullanarak, **dosyaları feature-based olarak organize et** (örneğin, `app/(auth)/login.tsx` veya `app/(tabs)/home.tsx`).  
+- `nativewind` ile **utility-first styling** yaklaşımını benimse.  
+
+## **Naming Conventions:**  
+- **camelCase** for variables and function names (e.g., `isFetchingData`, `handleUserInput`).  
+- **PascalCase** for component names (e.g., `UserProfile`, `ChatScreen`).  
+- **Klasör ve route isimleri** lowercase ve hyphenated olmalı (örneğin, `user-profile`, `chat-screen`).  
+
+## **TypeScript & Expo Router Kullanımı:**  
+- **Tüm componentleri TypeScript ile yaz.**  
+- `tsconfig.json` dosyasında **strict mode** aktif olsun.  
+- **`any` kullanımından kaçın**, mümkün olduğunca kesin ve açıklayıcı türler kullan.  
+- Expo Router için **dinamik segmentleri ve `useLocalSearchParams` gibi yardımcı fonksiyonları kullan**.  
+- `React.FC<Props>` yerine direkt `function ComponentName(props: Props)` formatında fonksiyon yaz.  
+
+## **Performance Optimization:**  
+- **Gereksiz `useEffect` ve `useState` kullanımlarını minimize et**.  
+- **React.memo() ve useCallback kullanarak gereksiz re-render’ları önle**.  
+- `FlatList` ve `ScrollView` için performans optimizasyonlarını uygula:  
+  - `removeClippedSubviews`, `maxToRenderPerBatch`, `windowSize` gibi optimizasyonları kullan.  
+  - `getItemLayout` fonksiyonuyla **sabit boyutlu öğeleri daha hızlı render et**.  
+  - `useRef` kullanarak gereksiz state güncellemelerinden kaçın.  
+
+## **UI & Styling - NativeWind & Dark Mode**  
+- **NativeWind (`tailwindcss` for React Native) kullanarak utility-first yaklaşımı benimse**.  
+- **Uygulama her zaman dark mode olarak çalışacak şekilde geliştir**.  
+- **Dark mode için `tailwind.config.js` içinde `darkMode: "class"` ayarını kullan**.  
+- `useColorScheme()` ve `app/_layout.tsx` içinde global dark mode kontrolünü yönet.  
+- `nativewind`'in `className` özelliği ile **tüm stillendirmeleri utility-first olarak yaz**.  
+- **Cihaz boyutları ve platform farklılıklarını `react-native-responsive` gibi kütüphanelerle optimize et**.  
+
+## **Navigation - Expo Router**  
+- **Expo Router kullanarak tüm navigasyonu yönlendir**.  
+- Stack, Tabs ve Modal yapısını `expo-router` ile uygun şekilde yapılandır.  
+- **Dynamic routes (`[id].tsx`) ve layout yönetimini optimize et**.  
+- `useLocalSearchParams` ve `useGlobalSearchParams` kullanarak route parametrelerini yönet.  
+
+## **Best Practices & DevOps:**  
+- **Expo EAS Build ve OTA Updates kullanarak hızlı güncellemeler sağla**.  
+- **React Native’in threading modeline uygun kod yazarak UI performansını koru**.  
+- **Tüm projelerde Prettier, ESLint ve Husky kullanarak kod kalitesini artır**.  
+- **State yönetimi için `zustand` veya `react-query` gibi hafif ve performanslı kütüphaneler kullan**.  
