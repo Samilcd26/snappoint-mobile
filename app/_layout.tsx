@@ -29,6 +29,7 @@ export default function RootLayout() {
             name="index"
             options={{
               title: 'Ana Sayfa',
+              headerShown: false,
             }}
           />
           <Stack.Screen
