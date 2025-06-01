@@ -1,30 +1,25 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
+import { SplashScreen as ExpoSplashScreen, Stack, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
-import { useColorScheme } from "@/components/useColorScheme";
-import { Slot } from "expo-router";
+import { useColorScheme } from "react-native";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuthStore } from "@/stores";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import "../global.css";
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from "expo-router";
+export { ErrorBoundary } from "expo-router";
 
-// export const unstable_settings = {
-//   // Ensure that reloading on `/modal` keeps a back button present.
-//   initialRouteName: "gluestack",
-// };
+export const unstable_settings = {
+  initialRouteName: "index",
+};
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+const queryClient = new QueryClient();
+
+ExpoSplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -32,37 +27,42 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
-  const [styleLoaded, setStyleLoaded] = useState(false);
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      ExpoSplashScreen.hideAsync();
     }
   }, [loaded]);
 
-  // useLayoutEffect(() => {
-  //   setStyleLoaded(true);
-  // }, [styleLoaded]);
-
-  // if (!loaded || !styleLoaded) {
-  //   return null;
-  // }
+  if (!loaded) {
+    return null;
+  }
 
   return <RootLayoutNav />;
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const hydrate = useAuthStore(state => state.hydrate);
+
+  // Hydrate auth store from AsyncStorage when app starts
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   return (
-    <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Slot />
-      </ThemeProvider>
-    </GluestackUIProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
+          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="splash" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </ThemeProvider>
+        </GluestackUIProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }

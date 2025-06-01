@@ -9,12 +9,21 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.testexpo",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCOzJkybaSIWE5VgbOSjxXQuOCllBtjnKY"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/adaptive-icon.png"
+      },
+      "package": "com.yourcompany.testexpo",
+      "config": {
+        "googleMaps": {
+          "apiKey": "process.env.GOOGLE_MAPS_API_KEY"
+        }
       }
     },
     "web": {
@@ -29,8 +38,13 @@
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
       ]
     ],
