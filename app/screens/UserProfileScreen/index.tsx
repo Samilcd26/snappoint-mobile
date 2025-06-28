@@ -16,8 +16,11 @@ export default function UserProfileScreen() {
   }>();
 
   // Get authenticated user and logout function from Zustand store
-  const { logout } = useAuthStore();
-  const { data: userData, isLoading: isUserLoading, error: userError } = useGetUser(Number(params.userId));
+  const { user: currentUser, logout } = useAuthStore();
+  
+  // Use params.userId if available, otherwise use current user's ID
+  const userId = params.userId ? Number(params.userId) : currentUser?.id;
+  const { data: userData, isLoading: isUserLoading, error: userError } = useGetUser(userId!);
   
 
   // Tab state
@@ -88,7 +91,7 @@ export default function UserProfileScreen() {
           <TouchableOpacity className="p-2" onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#3b82f6" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-gray-900">Profile</Text>
+          <Text className="text-xl font-bold text-gray-900">{user.username}</Text>
           {user.isOwnProfile ? (
             <TouchableOpacity className="p-2" onPress={logout}>
               <Ionicons name="log-out-outline" size={24} color="#3b82f6" />
@@ -114,7 +117,7 @@ export default function UserProfileScreen() {
             {/* User Info */}
             <View className="flex-1">
               <View className="flex-row items-center">
-                <Text className="text-xl font-bold text-gray-900">{user.username}</Text>
+                <Text className="text-xl font-bold text-gray-900">{user.firstName} {user.lastName}</Text>
                 {user.isVerified && (
                   <Ionicons name="checkmark-circle" size={18} color="#3b82f6" className="ml-1" />
                 )}
@@ -126,7 +129,13 @@ export default function UserProfileScreen() {
           {/* Action Button */}
           <View className="mt-4">
             {user.isOwnProfile ? (
-              <TouchableOpacity className="bg-gray-100 rounded-xl py-2 px-4 items-center">
+              <TouchableOpacity 
+                className="bg-gray-100 rounded-xl py-2 px-4 items-center"
+                onPress={() => router.push({
+                  pathname: '/screens/EditProfileScreen',
+                  params: { userId: params.userId }
+                })}
+              >
                 <Text className="font-semibold text-gray-800">Edit Profile</Text>
               </TouchableOpacity>
             ) : (
@@ -146,7 +155,7 @@ export default function UserProfileScreen() {
             <Text className="text-gray-500 text-sm">Places</Text>
           </View>
           <View className="items-center">
-            <Text className="text-xl font-bold text-blue-600">{posts?.user?.totalPoints || user.totalPoints}</Text>
+            <Text className="text-xl font-bold text-blue-600">{user.totalPoints}</Text>
             <Text className="text-blue-500 text-sm">Points</Text>
           </View>
         </View>
@@ -197,11 +206,7 @@ export default function UserProfileScreen() {
                 <Text className="text-gray-500 text-center mt-4">
                   No posts yet
                 </Text>
-                {user.isOwnProfile && (
-                  <TouchableOpacity className="mt-6 px-6 py-3 bg-blue-50 rounded-xl">
-                    <Text className="text-blue-600 font-semibold">Create Your First Post</Text>
-                  </TouchableOpacity>
-                )}
+              
               </View>
             ) : (
               <FlatList
@@ -234,8 +239,8 @@ export default function UserProfileScreen() {
                       latitude: post.latitude,
                       longitude: post.longitude,
                     }}
-                    title={post.placeName}
-                    description={post.postCaption}
+                    title={post.place.name}
+                    description={post.caption}
                     pinColor="#3b82f6"
                     onPress={() => handlePostPress(post)}
                   />
@@ -272,10 +277,10 @@ export default function UserProfileScreen() {
                     />
                     <View className="flex-1">
                       <Text className="font-semibold text-gray-900">
-                        {post.placeName}
+                        {post.place.name}
                       </Text>
                       <Text className="text-gray-500 text-sm" numberOfLines={1}>
-                        {post.postCaption}
+                        {post.caption}
                       </Text>
                       <Text className="text-gray-400 text-xs">
                         {new Date(post.createdAt).toLocaleDateString()}
@@ -284,7 +289,7 @@ export default function UserProfileScreen() {
                     <View className="items-end">
                       <View className="bg-blue-50 px-2 py-1 rounded-full mb-1">
                         <Text className="text-blue-600 font-semibold text-xs">
-                          {post.likesCount} likes
+                          {post.interaction.likesCount} likes
                         </Text>
                       </View>
                       {post.mediaCount > 1 && (

@@ -60,7 +60,7 @@ export const Login = () => {
               <MaskedView
                 maskElement={
                   <Text className="text-6xl font-bold text-center mb-2">
-                    SnapPoint
+                    YERTALE
                   </Text>
                 }
               >
@@ -70,7 +70,7 @@ export const Login = () => {
                   end={{ x: 1, y: 1 }}
                 >
                   <Text className="text-6xl font-bold text-center mb-2 opacity-0">
-                    SnapPoint
+                    YERTALE
                   </Text>
                 </LinearGradient>
               </MaskedView>
@@ -148,7 +148,7 @@ export const Login = () => {
               </Box>
 
               <Box className="flex-row justify-center mt-8">
-                <Text className="text-gray-400 text-lg">New to SnapPoint? </Text>
+                <Text className="text-gray-400 text-lg">New to YERTALE? </Text>
                 <Pressable>
                   <Text className="text-blue-300 font-bold text-lg">Sign up now</Text>
                 </Pressable>

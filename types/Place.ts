@@ -74,3 +74,67 @@ export interface TopUser {
     post_count: number;
     avatar: string;
 }
+
+export interface PostGridResponse {
+    success: boolean;
+    data: PostGridItem[];
+    meta: {
+        place: {
+            id: number;
+            name: string;
+        };
+    };
+    pagination: {
+        currentPage: number;
+        pageSize: number;
+        totalItems: number;
+        totalPages: number;
+    };
+}
+
+export interface PostGridItem {
+    id: number;
+    caption: string;
+    createdAt: string;
+    updatedAt: string;
+    latitude: number;
+    longitude: number;
+    thumbnailUrl: string;
+    mediaType: string;
+    mediaCount: number;
+    user: {
+        id: number;
+        username: string;
+        firstName: string;
+        lastName: string;
+        avatar: string;
+    };
+    place: {
+        id: number;
+        name: string;
+    };
+    interaction: {
+        likesCount: number;
+        commentsCount: number;
+        isLiked: boolean;
+    };
+}
+
+export interface ValidatePostLocationResponse {
+    place_id: number;
+    place_name: string;
+    user_latitude: number;
+    user_longitude: number;
+    place_latitude: number;
+    place_longitude: number;
+    distance_meters: number;
+    post_radius: number;
+    coverage_area: string;
+    radius_type: string;
+    is_within_radius: boolean;
+    categories: string[];
+    can_post: boolean;
+    error?: string;
+    required_distance?: number;
+    your_distance?: number;
+}

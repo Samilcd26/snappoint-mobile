@@ -29,7 +29,6 @@ const PostDetailScreen = () => {
   }>();
   
   const router = useRouter();
-  const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Record<string, number>>({});
   const likePostMutation = useLikePost();
 
@@ -258,7 +257,7 @@ const PostDetailScreen = () => {
 
   const renderSinglePost = () => {
     if (!localPosts.length) return null;
-    const currentPost = localPosts[selectedPostIndex];
+    const currentPost = localPosts[0];
 
     return (
       <ScrollView className="flex-1 bg-white">
@@ -273,34 +272,33 @@ const PostDetailScreen = () => {
   const renderMultiplePosts = () => {
     if (!localPosts.length) return null;
 
-    return (
-      <View className="flex-1">
-        {/* Post Navigation */}
-        {localPosts.length > 1 && (
-          <View className="p-4 bg-white border-b border-gray-200">
-            <Text className="text-center text-gray-600 font-semibold">
-              Post {selectedPostIndex + 1} of {localPosts.length}
-            </Text>
-            <View className="flex-row justify-center mt-2 space-x-4">
-              <TouchableOpacity 
-                onPress={() => setSelectedPostIndex(Math.max(0, selectedPostIndex - 1))}
-                disabled={selectedPostIndex === 0}
-                className={`p-2 ${selectedPostIndex === 0 ? 'opacity-30' : ''}`}
-              >
-                <Ionicons name="chevron-back" size={24} color="#3b82f6" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => setSelectedPostIndex(Math.min(localPosts.length - 1, selectedPostIndex + 1))}
-                disabled={selectedPostIndex === localPosts.length - 1}
-                className={`p-2 ${selectedPostIndex === localPosts.length - 1 ? 'opacity-30' : ''}`}
-              >
-                <Ionicons name="chevron-forward" size={24} color="#3b82f6" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        {renderSinglePost()}
+    const renderPostItem = ({ item: post }: { item: UnifiedPost }) => (
+      <View className="mb-6">
+        {renderPostHeader(post)}
+        {renderPostImages(post)}
+        {renderPostActions(post)}
+        {renderPostContent(post)}
+        {/* Separator between posts */}
+        <View className="h-2 bg-gray-100" />
       </View>
+    );
+
+    return (
+      <FlatList
+        data={localPosts}
+        renderItem={renderPostItem}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={true}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={2}
+        windowSize={5}
+        initialNumToRender={1}
+        getItemLayout={(data, index) => ({
+          length: 600, // Approximate height of each post
+          offset: 600 * index,
+          index,
+        })}
+      />
     );
   };
 
@@ -358,7 +356,10 @@ const PostDetailScreen = () => {
             {shouldFetchMultiplePosts ? 'Posts at Location' : 'Post Details'}
           </Text>
           <TouchableOpacity className="p-2">
+            {/* TODO: Add options */}
+            {/*
             <Ionicons name="ellipsis-horizontal" size={24} color="#3b82f6" />
+            */}
           </TouchableOpacity>
         </View>
       </View>

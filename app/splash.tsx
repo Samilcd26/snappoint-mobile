@@ -147,7 +147,7 @@ export default function SplashScreen() {
             <MaskedView
               maskElement={
                 <Text className="text-7xl font-bold text-center">
-                  SnapPoint
+                  YERTALE
                 </Text>
               }
             >
@@ -157,7 +157,7 @@ export default function SplashScreen() {
                 end={{ x: 1, y: 1 }}
               >
                 <Text className="text-7xl font-bold text-center opacity-0">
-                  SnapPoint
+                  YERTALE
                 </Text>
               </LinearGradient>
             </MaskedView>

@@ -84,7 +84,7 @@ export const useGetUserPostsAtPlace = (
 };
 
 // Get place posts grid
-export const useGetPlacePostsGrid = (placeId: string, page = 1, pageSize = 30) => {
+export const useGetPlacePostsGrid = (placeId: number | undefined, page = 1, pageSize = 30) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['placePostsGrid', placeId, page, pageSize],
     queryFn: async () => {
@@ -253,3 +253,4 @@ export const usePostPagination = (totalPages: number, currentPage: number) => {
     previousPage: hasPreviousPage ? currentPage - 1 : null,
   };
 }; 
+

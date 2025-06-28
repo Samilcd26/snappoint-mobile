@@ -8,6 +8,7 @@ import { useColorScheme } from "react-native";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from "@/stores";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import "../global.css";
 
@@ -50,19 +51,21 @@ function RootLayoutNav() {
   }, [hydrate]);
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
-          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="splash" />
-              <Stack.Screen name="login" />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            </Stack>
-          </ThemeProvider>
-        </GluestackUIProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
+            <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="splash" />
+                <Stack.Screen name="login" />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              </Stack>
+            </ThemeProvider>
+          </GluestackUIProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

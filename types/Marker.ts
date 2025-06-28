@@ -2,8 +2,12 @@ export interface Marker {
     id: number;
     latitude: number;
     longitude: number;
-    pointValue: number;
-    isVerified: boolean;
+    point_value: number;
+    is_verified: boolean;
+    distance: number;
+    post_radius: number;
+    coverage_area: number;
+    radius_type: string;
 }
 
 
