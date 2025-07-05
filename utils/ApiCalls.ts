@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // Axios instance setup
 const service = axios.create({
-  baseURL: "http://192.168.1.36:8080/api",
+  baseURL: "http://192.168.1.45:8080/api",
   timeout: 15000 // request timeout
 });
 

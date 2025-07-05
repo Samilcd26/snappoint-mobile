@@ -20,6 +20,9 @@ export default function UserProfileScreen() {
   
   // Use params.userId if available, otherwise use current user's ID
   const userId = params.userId ? Number(params.userId) : currentUser?.id;
+
+  console.log("userId", userId);
+  
   const { data: userData, isLoading: isUserLoading, error: userError } = useGetUser(userId!);
   
 

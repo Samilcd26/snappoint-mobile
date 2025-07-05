@@ -9,13 +9,15 @@ import { Marker } from '@/types/Marker';
 import { useCreatePost } from '@/api/postApi';
 import { Switch } from "@/components/ui/switch"
 import { Text } from '@/components/ui/text';
-import { PostRequest } from '@/types/post.types';
+import { CreatePostRequest } from '@/types/post.types';
+import { uploadMultipleFilesComplete } from '@/api/uploadApi';
 
 export default function CreatePostScreen() {
   const router = useRouter();
   const showToast = useShowToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [imageUris, setImageUris] = useState<string[]>(["https://picsum.photos/1080/1350","https://picsum.photos/1080/1350","https://picsum.photos/1080/1350"]);
+  const [imageUris, setImageUris] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   // Get location params from URL if available
   const params = useLocalSearchParams<{
     latitude: string;
@@ -26,40 +28,12 @@ export default function CreatePostScreen() {
 
   
   
-  const [postRequest, setPostRequest] = useState<PostRequest>({
+  const [postRequest, setPostRequest] = useState<CreatePostRequest>({
     postCaption: '',
-    mediaItems: [
-        {
-          mediaType: 'photo',
-          mediaUrl: 'https://picsum.photos/1080/1350',
-          width: 1080,
-          height: 1350,
-          duration: 0,
-          altText: '',
-          tags: []
-        },
-        {
-          mediaType: 'photo',
-          mediaUrl: 'https://picsum.photos/1080/1350',
-          width: 1080,
-          height: 1350,
-          duration: 0,
-          altText: '',
-          tags: []
-        },
-        {
-          mediaType: 'photo',
-          mediaUrl: 'https://picsum.photos/1080/1350',
-          width: 1080,
-          height: 1350,
-          duration: 0,
-          altText: '',
-          tags: []
-        },
-    ],
-    placeId: parseInt(params.placeId),
-    latitude: parseFloat(params.latitude),
-    longitude: parseFloat(params.longitude),
+    mediaItems: [],
+    placeId: parseInt(params.placeId) || 0,
+    latitude: parseFloat(params.latitude) || 0,
+    longitude: parseFloat(params.longitude) || 0,
     isPublic: true,
     allowComments: true,
   });
@@ -263,8 +237,44 @@ export default function CreatePostScreen() {
     setIsLoading(true);
 
     try {
+      // Upload all images to Cloudflare R2
+      showToast({
+        title: 'Uploading',
+        description: 'Uploading your images...',
+        action: 'info'
+      });
+
+      const uploadPromises = imageUris.map(async (uri, index) => {
+        return uploadMultipleFilesComplete([{
+          uri,
+          fileName: `image_${Date.now()}_${index}.jpg`,
+          contentType: 'image/jpeg',
+          mediaType: 'photo',
+          fileSize: 1024 * 1024, // Estimate file size
+          dimensions: { width: 1080, height: 1350 }
+        }]);
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+      const uploadedFiles = uploadResults.flat();
+
+      // Update post request with uploaded file URLs
+      const updatedPostRequest = {
+        ...postRequest,
+        postCaption: postRequest.postCaption || '',
+        mediaItems: uploadedFiles.map((file, index) => ({
+          mediaType: 'photo' as const,
+          mediaUrl: file.fileUrl,
+          width: file.width || 1080,
+          height: file.height || 1350,
+          duration: 0,
+          altText: '',
+          tags: []
+        }))
+      };
+
       // Create the post using our mutation
-      const newPost = await createPostMutation.mutateAsync(postRequest);
+      const newPost = await createPostMutation.mutateAsync(updatedPostRequest);
       
       showToast({
         title: 'Success',
@@ -278,7 +288,7 @@ export default function CreatePostScreen() {
       console.error('Error creating post:', error);
       showToast({
         title: 'Error',
-        description: 'Failed to create post. Please try again.',
+        description: 'Failed to upload images or create post. Please try again.',
         action: 'error'
       });
     } finally {

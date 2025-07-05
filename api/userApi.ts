@@ -1,4 +1,3 @@
-import { UserPost } from "@/types/post.types";
 import { UserDetail } from "@/types/User";
 import { SuccessResponse } from "@/types/Response";
 import { apiCall } from "@/utils/ApiCalls";
@@ -10,6 +9,7 @@ export const useGetUser = (userId: number) => {
       queryFn: async () => {
         return apiCall.get<SuccessResponse<UserDetail>>(`/users/${userId}/profile`);
       },
+      enabled: !!userId,
     });
     return { data, isLoading, error };
   };

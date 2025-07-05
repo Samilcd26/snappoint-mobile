@@ -5,7 +5,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, router } from 'expo-router';
 import { useGetUserInfo } from '@/api/authApi';
-import MaskedView from '@react-native-masked-view/masked-view';
+import { Image } from '@/components/ui/image';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming,  withDelay, Easing } from 'react-native-reanimated';
 import { View, Dimensions, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +23,10 @@ export default function SplashScreen() {
   // Animation values
   const logoOpacity = useSharedValue(0);
   const logoScale = useSharedValue(0.5);
+  const sloganOpacity = useSharedValue(0);
   const spinnerOpacity = useSharedValue(0);
   const logoY = useSharedValue(20);
+  const sloganY = useSharedValue(30);
   
   // Define animated styles
   const logoAnimStyle = useAnimatedStyle(() => {
@@ -33,6 +35,15 @@ export default function SplashScreen() {
       transform: [
         { scale: logoScale.value },
         { translateY: logoY.value }
+      ],
+    };
+  });
+
+  const sloganAnimStyle = useAnimatedStyle(() => {
+    return {
+      opacity: sloganOpacity.value,
+      transform: [
+        { translateY: sloganY.value }
       ],
     };
   });
@@ -65,8 +76,15 @@ export default function SplashScreen() {
       easing: Easing.out(Easing.cubic) 
     }));
     
+    // Slogan animation - appears after logo
+    sloganOpacity.value = withDelay(1000, withTiming(1, { duration: 600 }));
+    sloganY.value = withDelay(1000, withTiming(0, { 
+      duration: 600, 
+      easing: Easing.out(Easing.cubic) 
+    }));
+    
     // Spinner animation - slightly delayed
-    spinnerOpacity.value = withDelay(800, withTiming(1, { duration: 500 }));
+    spinnerOpacity.value = withDelay(1400, withTiming(1, { duration: 500 }));
     
     // Set minimum display time
     const timer = setTimeout(() => {
@@ -74,7 +92,7 @@ export default function SplashScreen() {
       minimumTimeElapsed.current = true;
       setAnimationComplete(true);
       checkAndNavigate();
-    }, 2500); // Minimum 2.5 seconds display
+    }, 3000); // Minimum 3 seconds display
     
     return () => clearTimeout(timer);
   }, []);
@@ -143,27 +161,27 @@ export default function SplashScreen() {
         }}
       >
         <Box className="justify-center items-center flex-1">
-          <Animated.View style={[{ marginBottom: 40 }, logoAnimStyle]}>
-            <MaskedView
-              maskElement={
-                <Text className="text-7xl font-bold text-center">
-                  YERTALE
-                </Text>
-              }
-            >
-              <LinearGradient
-                colors={['#ffffff', '#e0f7ff', '#ffffff']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text className="text-7xl font-bold text-center opacity-0">
-                  YERTALE
-                </Text>
-              </LinearGradient>
-            </MaskedView>
+          {/* Logo */}
+          <Animated.View style={[{ marginBottom: 20 }, logoAnimStyle]}>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={{
+                width: 200,
+                height: 200,
+                resizeMode: 'contain',
+              }}
+              alt="YerTale Logo"
+            />
           </Animated.View>
           
-          <Animated.View style={[{ marginTop: 32 }, spinnerAnimStyle]}>
+          {/* Slogan */}
+          <Animated.View style={[{ marginBottom: 40, paddingHorizontal: 40 }, sloganAnimStyle]}>
+            <Text className="text-white text-xl font-medium text-center leading-7 tracking-wide">
+              "Mark the Map with Your Moments!"
+            </Text>
+          </Animated.View>
+          
+          <Animated.View style={[{ marginTop: 20 }, spinnerAnimStyle]}>
             <Spinner size="large" color="white" />
           </Animated.View>
         </Box>
