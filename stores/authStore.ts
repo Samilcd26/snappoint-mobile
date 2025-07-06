@@ -5,6 +5,11 @@ import { User } from '@/types/User';
 import { apiCall } from '@/utils/ApiCalls';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+
+// Configure the web browser for auth sessions
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthResponse {
   access_token: string;
@@ -23,6 +28,7 @@ interface AuthState {
   
   // Actions
   login: (email: string, password: string) => Promise<AuthResponse>;
+  googleLogin: () => Promise<AuthResponse>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
   getUser: () => User | null;
@@ -56,6 +62,59 @@ export const useAuthStore = create<AuthState>()(
           await AsyncStorage.setItem('user', JSON.stringify(response.user));
           
           return response;
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+      
+      googleLogin: async () => {
+        set({ isLoading: true });
+        try {
+          const discovery = {
+            authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+            tokenEndpoint: 'https://oauth2.googleapis.com/token',
+          };
+
+          const redirectUri = AuthSession.makeRedirectUri({
+            scheme: 'com.snap-point.app', // Bu değeri app.json'da tanımlamanız gerekiyor
+            path: 'auth',
+          });
+
+          const request = new AuthSession.AuthRequest({
+            clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '', // Environment variable olarak tanımlanmalı
+            scopes: ['openid', 'profile', 'email'],
+            redirectUri,
+            responseType: AuthSession.ResponseType.Code,
+            state: 'random-state-string',
+          });
+
+          const result = await request.promptAsync(discovery);
+
+          if (result.type === 'success' && result.params.code) {
+            // Backend'e ID token gönder
+            const response = await apiCall.post<AuthResponse>('/google-login', {
+              code: result.params.code,
+              redirect_uri: redirectUri,
+            }, false);
+
+            set({
+              user: response.user,
+              accessToken: response.access_token,
+              refreshToken: response.refresh_token,
+              isLoggedIn: true,
+              isLoading: false
+            });
+
+            await AsyncStorage.setItem('access_token', response.access_token);
+            await AsyncStorage.setItem('refresh_token', response.refresh_token);
+            await AsyncStorage.setItem('user', JSON.stringify(response.user));
+
+            return response;
+          } else {
+            set({ isLoading: false });
+            throw new Error('Google authentication was cancelled or failed');
+          }
         } catch (error) {
           set({ isLoading: false });
           throw error;

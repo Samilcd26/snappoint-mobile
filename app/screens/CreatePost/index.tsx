@@ -14,7 +14,7 @@ import { uploadMultipleFilesComplete } from '@/api/uploadApi';
 
 export default function CreatePostScreen() {
   const router = useRouter();
-  const showToast = useShowToast();
+  const { showToast } = useShowToast();
   const [isLoading, setIsLoading] = useState(false);
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});

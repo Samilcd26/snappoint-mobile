@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // Axios instance setup
 const service = axios.create({
-  baseURL: "http://192.168.1.45:8080/api",
+  baseURL: "http://192.168.1.87:8080/api",
   timeout: 15000 // request timeout
 });
 
@@ -90,7 +90,7 @@ export const apiCall = {
 
 // Error handler
 export const useHandleApiError = () => {
-  const showToast = useShowToast();
+  const { showToast } = useShowToast();
 
   return async (error: any) => {
     if (!error.response) {
@@ -132,7 +132,7 @@ export const useHandleApiError = () => {
 
 // Başarılı işlemler için kullanılabilecek helper fonksiyonlar
 export const useSuccessMessages = () => {
-  const showToast = useShowToast();
+  const { showToast } = useShowToast();
 
   return {
     created: (entity: string) => showToast(`${entity} başarıyla oluşturuldu`),

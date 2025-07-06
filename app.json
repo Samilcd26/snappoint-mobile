@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "test-expo",
-    "slug": "test-expo",
+    "name": "snap-point",
+    "slug": "snap-point",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "com.snap-point.app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.testexpo",
+      "bundleIdentifier": "com.snap-point.app",
       "config": {
         "googleMapsApiKey": "AIzaSyCOzJkybaSIWE5VgbOSjxXQuOCllBtjnKY"
       }
@@ -19,7 +19,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
-      "package": "com.yourcompany.testexpo",
+      "package": "com.snap-point.app",
       "config": {
         "googleMaps": {
           "apiKey": "process.env.GOOGLE_MAPS_API_KEY"
@@ -46,7 +46,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

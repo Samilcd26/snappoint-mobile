@@ -25,6 +25,8 @@ export default function UserProfileScreen() {
   
   const { data: userData, isLoading: isUserLoading, error: userError } = useGetUser(userId!);
   
+  console.log("userData", userData);
+  
 
   // Tab state
   const [activeTab, setActiveTab] = useState('posts');

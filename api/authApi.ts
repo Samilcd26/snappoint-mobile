@@ -19,7 +19,7 @@ export interface AuthResponse {
 }
 
 export const useLogin = () => {
-  const showToast = useShowToast();
+  const { showToast } = useShowToast();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -38,6 +38,106 @@ export const useLogin = () => {
       await queryClient.refetchQueries({ queryKey: ['userInfo'] });
       // Navigate to tabs
       router.replace('/(tabs)');
+    },
+  });
+};
+
+export const useVerifyEmail = () => {
+  const { showToast } = useShowToast();
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const response = await apiCall.post<{ success: boolean; message: string; user_id?: number }>('/verify-email', { email }, false);
+      return response;
+    },
+    onError: (error: any) => {
+      showToast({
+        title: 'Error',
+        description: error?.error || 'Email verification failed',
+        action: 'error',
+      });
+    },
+  });
+};
+
+export const useRegisterEmailCheck = () => {
+  const { showToast } = useShowToast();
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const response = await apiCall.post<{ 
+        success: boolean; 
+        message: string; 
+        available: boolean;
+        error?: string;
+      }>('/register/check-email', { email }, false);
+      return response;
+    },
+    onError: (error: any) => {
+      console.log(error.response.data);
+      showToast({
+        title: 'Error',
+        description: error?.error || 'Email check failed',
+        action: 'error',
+      });
+    },
+  });
+};
+
+export const useRegisterUsernameCheck = () => {
+  const { showToast } = useShowToast();
+  return useMutation({
+    mutationFn: async ({ username }: { username: string }) => {
+      const response = await apiCall.post<{ 
+        success: boolean; 
+        message: string; 
+        available: boolean;
+        error?: string;
+      }>('/register/check-username', { username }, false);
+      return response;
+    },
+    onError: (error: any) => {
+      console.log(error.response.data);
+      showToast({
+        title: 'Error',
+        description: error?.error || 'Username check failed',
+        action: 'error',
+      });
+    },
+  });
+};
+
+export const useRegister = () => {
+  const { showToast } = useShowToast();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userData: {
+      username: string;
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      gender?: string;
+      birthday?: string;
+      phone?: string;
+      avatar?: string;
+      avatarTempKey?: string;
+    }) => {
+      const response = await apiCall.post<{ success: boolean; message: string; user: any }>('/register', userData, false);
+      return response;
+    },
+    onSuccess: (data) => {
+      showToast({
+        title: 'Success',
+        description: 'Registration successful! Please login.',
+        action: 'success',
+      });
+      router.replace('/login');
+    },
+    onError: (error: any) => {
+      showToast({
+        title: 'Error',
+        description: error?.error || 'Registration failed',
+        action: 'error',
+      });
     },
   });
 };
