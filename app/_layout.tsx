@@ -9,8 +9,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from "@/stores";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { renderScreens } from "@/config/screenConfig";
 
 import "../global.css";
+import "@/utils/i18n";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -18,7 +20,18 @@ export const unstable_settings = {
   initialRouteName: "index",
 };
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000 , // 5 dakika
+      gcTime: 5000 , // 10 dakika
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -45,10 +58,10 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const hydrate = useAuthStore(state => state.hydrate);
 
-  // Hydrate auth store from AsyncStorage when app starts
+  // Hydrate auth store from AsyncStorage when app starts - sadece bir kere
   useEffect(() => {
     hydrate();
-  }, [hydrate]);
+  }, []); // Dependency array'i boş bırak
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -57,10 +70,7 @@ function RootLayoutNav() {
           <GluestackUIProvider mode={colorScheme === "dark" ? "dark" : "light"}>
             <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
               <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="splash" />
-                <Stack.Screen name="login" />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                {renderScreens()}
               </Stack>
             </ThemeProvider>
           </GluestackUIProvider>

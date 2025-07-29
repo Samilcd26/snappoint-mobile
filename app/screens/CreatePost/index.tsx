@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View,  TextInput, Image, TouchableOpacity, ScrollView, ActivityIndicator, Platform, FlatList } from 'react-native';
+import { View,  TextInput, Image, TouchableOpacity, ScrollView, ActivityIndicator, Platform, FlatList, Dimensions } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,13 +11,14 @@ import { Switch } from "@/components/ui/switch"
 import { Text } from '@/components/ui/text';
 import { CreatePostRequest } from '@/types/post.types';
 import { uploadMultipleFilesComplete } from '@/api/uploadApi';
+import { useTranslation } from '@/utils/useTranslation';
 
 export default function CreatePostScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { showToast } = useShowToast();
   const [isLoading, setIsLoading] = useState(false);
   const [imageUris, setImageUris] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   // Get location params from URL if available
   const params = useLocalSearchParams<{
     latitude: string;
@@ -56,8 +57,13 @@ export default function CreatePostScreen() {
           id: parseInt(params.placeId),
           latitude: lat,
           longitude: lng,
-          pointValue: pointValue,
-          isVerified: false
+          point_value: pointValue,
+          is_verified: false,
+          distance: 0,
+          post_radius: 100,
+          coverage_area: 100,
+          radius_type: 'small',
+          radius_description: 'Within posting range'
         };
         setLocation(marker);
         setPostRequest(prev => ({
@@ -82,8 +88,7 @@ export default function CreatePostScreen() {
       
       if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
         showToast({
-          title: 'Permissions required',
-          description: 'Camera and media library permissions are needed to upload images',
+          description: t('createPost.permissionsDescription'),
           action: 'warning'
         });
         return false;
@@ -97,8 +102,7 @@ export default function CreatePostScreen() {
   const takePhoto = async () => {
     if (imageUris.length >= MAX_IMAGES) {
       showToast({
-        title: 'Maximum Images',
-        description: `You can only upload up to ${MAX_IMAGES} images`,
+        description: t('createPost.maximumImagesDescription'),
         action: 'warning'
       });
       return;
@@ -111,7 +115,7 @@ export default function CreatePostScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [4, 5], // 4:5 oranı
         quality: 0.8,
       });
 
@@ -123,8 +127,7 @@ export default function CreatePostScreen() {
     } catch (error) {
       console.error('Error taking photo:', error);
       showToast({
-        title: 'Error',
-        description: 'Failed to take photo',
+        description: t('createPost.failedToTakePhoto'),
         action: 'error'
       });
     }
@@ -133,10 +136,10 @@ export default function CreatePostScreen() {
   // Update media items when images change
   const updateMediaItems = (uris: string[]) => {
     const mediaItems = uris.map(uri => ({
-      mediaType: 'photo',
+      mediaType: 'photo' as const,
       mediaUrl: uri,
-      width: 0,
-      height: 0,
+      width: 864, // 4:5 oranı (864x1080)
+      height: 1080, // 4:5 oranı
       duration: 0,
       altText: '',
       tags: []
@@ -158,6 +161,8 @@ export default function CreatePostScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: MAX_IMAGES - imageUris.length,
+        allowsEditing: true,
+        aspect: [4, 5], // 4:5 oranı
         quality: 0.8,
       });
 
@@ -166,8 +171,7 @@ export default function CreatePostScreen() {
         
         if (imageUris.length + newUris.length > MAX_IMAGES) {
           showToast({
-            title: 'Too Many Images',
-            description: `You can only upload up to ${MAX_IMAGES} images. Only the first ${MAX_IMAGES - imageUris.length} will be added.`,
+            description: t('createPost.tooManyImagesDescription'),
             action: 'warning'
           });
           
@@ -185,8 +189,7 @@ export default function CreatePostScreen() {
     } catch (error) {
       console.error('Error picking images:', error);
       showToast({
-        title: 'Error',
-        description: 'Failed to select images',
+        description: t('createPost.failedToSelectImages'),
         action: 'error'
       });
     }
@@ -216,10 +219,10 @@ export default function CreatePostScreen() {
 
   // Submit the post
   const handleSubmitPost = async () => {
+   
     if (imageUris.length === 0) {
       showToast({
-        title: 'Image Required',
-        description: 'Please select at least one image for your post',
+        description: t('createPost.imageRequiredDescription'),
         action: 'warning'
       });
       return;
@@ -227,9 +230,25 @@ export default function CreatePostScreen() {
 
     if (!location) {
       showToast({
-        title: 'Location Required',
-        description: 'Please select a location for your post',
+        description: t('createPost.locationRequiredDescription'),
         action: 'warning'
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!postRequest.placeId || postRequest.placeId === 0) {
+      showToast({
+        description: t('createPost.invalidLocationDescription'),
+        action: 'error'
+      });
+      return;
+    }
+
+    if (!postRequest.latitude || !postRequest.longitude) {
+      showToast({
+        description: t('createPost.invalidCoordinatesDescription'),
+        action: 'error'
       });
       return;
     }
@@ -239,24 +258,35 @@ export default function CreatePostScreen() {
     try {
       // Upload all images to Cloudflare R2
       showToast({
-        title: 'Uploading',
-        description: 'Uploading your images...',
-        action: 'info'
+        description: t('createPost.uploadingDescription'),
+        action: 'info',
+        duration:900
       });
 
       const uploadPromises = imageUris.map(async (uri, index) => {
         return uploadMultipleFilesComplete([{
           uri,
           fileName: `image_${Date.now()}_${index}.jpg`,
-          contentType: 'image/jpeg',
           mediaType: 'photo',
-          fileSize: 1024 * 1024, // Estimate file size
-          dimensions: { width: 1080, height: 1350 }
+          dimensions: { width: 864, height: 1080 } // 4:5 oranı
         }]);
       });
 
       const uploadResults = await Promise.all(uploadPromises);
       const uploadedFiles = uploadResults.flat();
+
+      console.log('📤 Uploaded files:', uploadedFiles);
+
+      // Validate uploaded files
+      if (!uploadedFiles || uploadedFiles.length === 0) {
+        throw new Error('No files were uploaded successfully');
+      }
+
+      // Check if all uploaded files have valid URLs
+      const invalidFiles = uploadedFiles.filter(file => !file.fileUrl || file.fileUrl.trim() === '');
+      if (invalidFiles.length > 0) {
+        throw new Error('Some files failed to upload properly');
+      }
 
       // Update post request with uploaded file URLs
       const updatedPostRequest = {
@@ -265,30 +295,48 @@ export default function CreatePostScreen() {
         mediaItems: uploadedFiles.map((file, index) => ({
           mediaType: 'photo' as const,
           mediaUrl: file.fileUrl,
-          width: file.width || 1080,
-          height: file.height || 1350,
+          width: 864,
+          height: 1080, // 4:5 oranı
           duration: 0,
           altText: '',
           tags: []
         }))
       };
 
+      console.log('📤 Sending post request:', JSON.stringify(updatedPostRequest, null, 2));
+
+      // Validate final request structure
+      if (!updatedPostRequest.mediaItems || updatedPostRequest.mediaItems.length === 0) {
+        throw new Error('No valid media items to post');
+      }
+
       // Create the post using our mutation
       const newPost = await createPostMutation.mutateAsync(updatedPostRequest);
       
       showToast({
-        title: 'Success',
-        description: `Your post with ${imageUris.length} image${imageUris.length > 1 ? 's' : ''} has been created successfully!`,
+        description: t('createPost.successDescription'),
         action: 'success'
       });
       
       // Navigate back or to the home screen
       router.back();
-    } catch (error) {
-      console.error('Error creating post:', error);
+    } catch (error: any) {
+      console.error('❌ Error creating post:', error);
+      
+      // More specific error handling
+      let errorMessage = 'Failed to upload images or create post. Please try again.';
+      
+      if (error.response?.status === 400) {
+        const backendError = error.response?.data?.error;
+        if (backendError) {
+          errorMessage = `Validation error: ${backendError}`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       showToast({
-        title: 'Error',
-        description: 'Failed to upload images or create post. Please try again.',
+        description: errorMessage,
         action: 'error'
       });
     } finally {
@@ -297,7 +345,7 @@ export default function CreatePostScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white pt-10">
       <ScrollView className="flex-1">
         {/* Header */}
         <View className="p-4 border-b border-gray-200">
@@ -305,7 +353,7 @@ export default function CreatePostScreen() {
             <TouchableOpacity onPress={() => router.back()} className="p-2">
               <Ionicons name="arrow-back" size={24} color="#3b82f6" />
             </TouchableOpacity>
-            <Text className="text-xl font-bold text-gray-900">Create Post</Text>
+            <Text className="text-xl font-bold text-gray-900">{t('createPost.title')}</Text>
             <TouchableOpacity 
               onPress={handleSubmitPost} 
               disabled={imageUris.length === 0 || isLoading}
@@ -315,7 +363,7 @@ export default function CreatePostScreen() {
                 <ActivityIndicator size="small" color="#3b82f6" />
               ) : (
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-blue-600 font-semibold ml-2">Share</Text>
+                  <Text className="text-blue-600 font-semibold ml-2">{t('createPost.share')}</Text>
                   <Ionicons name="send" size={20} color="#3b82f6" />
                 </View>
               )}
@@ -330,34 +378,46 @@ export default function CreatePostScreen() {
               data={imageUris}
               horizontal
               pagingEnabled
-              showsHorizontalScrollIndicator={true}
+              showsHorizontalScrollIndicator={false}
               keyExtractor={(item, index) => `image-${index}`}
-              renderItem={({ item, index }) => (
-                <View className="relative">
-                  <Image 
-                    source={{ uri: item }} 
-                    style={{ width: 400, height: 400 }}
-                    resizeMode="cover" 
-                    className="bg-gray-100"
-                  />
-                  <TouchableOpacity 
-                    onPress={() => removeImage(index)}
-                    className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-sm"
-                  >
-                    <Ionicons name="close" size={20} color="#3b82f6" />
-                  </TouchableOpacity>
-                  <View className="absolute bottom-2 right-2 bg-white rounded-full px-2 py-1 shadow-sm">
-                    <Text className="text-blue-600 font-semibold">{index + 1}/{imageUris.length}</Text>
+              snapToInterval={Dimensions.get('window').width}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: 0 }}
+              renderItem={({ item, index }) => {
+                const screenWidth = Dimensions.get('window').width;
+                const imageWidth = screenWidth - 32; // 16px padding on each side
+                const imageHeight = (imageWidth * 5) / 4; // 4:5 ratio
+                
+                return (
+                  <View className="relative" style={{ width: screenWidth, paddingHorizontal: 16 }}>
+                    <Image 
+                      source={{ uri: item }} 
+                      style={{ width: imageWidth, height: imageHeight }}
+                      resizeMode="cover" 
+                      className="bg-gray-100 rounded-lg"
+                    />
+                    <TouchableOpacity 
+                      onPress={() => removeImage(index)}
+                      className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-sm"
+                    >
+                      <Ionicons name="close" size={20} color="#3b82f6" />
+                    </TouchableOpacity>
+                    <View className="absolute bottom-2 right-2 bg-white rounded-full px-2 py-1 shadow-sm">
+                      <Text className="text-blue-600 font-semibold">{index + 1}/{imageUris.length}</Text>
+                    </View>
                   </View>
-                </View>
-              )}
+                );
+              }}
             />
           </View>
         ) : (
-          <View className="items-center justify-center p-8 bg-gray-50">
+          <View className="items-center justify-center p-8 bg-gray-50 mx-4 my-4 rounded-lg" style={{ minHeight: 300 }}>
             <Ionicons name="images-outline" size={80} color="#3b82f6" />
-            <Text className="text-gray-500 text-center mt-4">
-              Select up to {MAX_IMAGES} images for your post
+            <Text className="text-gray-500 text-center mt-4 text-lg">
+              {t('createPost.selectImages')} {MAX_IMAGES} {t('createPost.imagesForPost')}
+            </Text>
+            <Text className="text-gray-400 text-center mt-2">
+              4:5 aspect ratio
             </Text>
           </View>
         )}
@@ -381,19 +441,19 @@ export default function CreatePostScreen() {
             </TouchableOpacity>
           </View>
           <Text className="text-center text-gray-500 mt-2">
-            {imageUris.length}/{MAX_IMAGES} images selected
+            {imageUris.length}/{MAX_IMAGES} {t('createPost.imagesSelected')}
           </Text>
         </View>
 
         {/* Caption Input */}
         <View className="p-4 bg-white">
           <Text className="text-gray-700 font-medium mb-2">
-            Caption
+            {t('createPost.caption')}
           </Text>
           <TextInput
             ref={captionInputRef}
             className="bg-gray-50 text-gray-900 p-3 rounded-lg min-h-[100px] border border-gray-200"
-            placeholder="Add a caption to your post..."
+            placeholder={t('createPost.captionPlaceholder')}
             placeholderTextColor="#9CA3AF"
             multiline
             value={postRequest.postCaption}
@@ -401,20 +461,11 @@ export default function CreatePostScreen() {
             maxLength={maxCaptionLength}
           />
           <Text className="text-gray-400 text-right mt-1">
-            {postRequest.postCaption.length}/{maxCaptionLength}
+            {(postRequest.postCaption || '').length}/{maxCaptionLength}
           </Text>
         </View>
 
-        <View className="p-4 bg-white">
-          <Text className='text-gray-700 font-medium mb-2'>Allow comments</Text>
-      <Switch
-        defaultValue={true}
-        value={postRequest.allowComments}
-        onValueChange={() => setPostRequest(prev => ({ ...prev, allowComments: !prev.allowComments }))}
-      />
-          
-        </View>
-
+     
       
       </ScrollView>
     </SafeAreaView>

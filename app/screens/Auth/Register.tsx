@@ -10,8 +10,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectInput, SelectIcon, SelectPortal, SelectBackdrop, SelectContent, SelectDragIndicator, SelectDragIndicatorWrapper, SelectItem } from "@/components/ui/select";
-import { Icon } from '@/components/ui/icon';
-import { ArrowLeftIcon, MailIcon, EyeIcon, EyeOffIcon, CheckIcon, AtSignIcon, LockIcon, ChevronDownIcon, AddIcon, DownloadIcon } from '@/components/ui/icon';
+import { Icon , ArrowLeftIcon, MailIcon, EyeIcon, EyeOffIcon, CheckIcon, AtSignIcon, LockIcon, ChevronDownIcon, AddIcon, DownloadIcon } from '@/components/ui/icon';
 import { Image } from '@/components/ui/image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRegisterEmailCheck, useRegisterUsernameCheck, useRegister } from '@/api/authApi';
@@ -517,7 +516,6 @@ const AvatarStep = React.memo<AvatarStepProps>(({
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       showToast({
-        title: 'Permission Required',
         description: 'Please grant gallery access to select photos',
         action: 'error',
       });
@@ -530,7 +528,6 @@ const AvatarStep = React.memo<AvatarStepProps>(({
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       showToast({
-        title: 'Permission Required',
         description: 'Please grant camera access to take photos',
         action: 'error',
       });
@@ -616,14 +613,12 @@ const AvatarStep = React.memo<AvatarStepProps>(({
       // Update the preview URL and clear manual avatar input
       onAvatarUriChange(uploadResult.fileUrl);
       showToast({
-        title: 'Success',
         description: 'Profile photo compressed and uploaded successfully! 📸',
         action: 'success',
       });
     } catch (error: any) {
       console.error('❌ Avatar upload failed:', error);
       showToast({
-        title: 'Upload Failed',
         description: error.message || 'Failed to upload image',
         action: 'error',
       });
@@ -930,7 +925,6 @@ const Register: React.FC<RegisterProps> = React.memo(({
             setEmailError('');
             setCurrentStep(2);
             showToast({
-              title: 'Success',
               description: 'Email is available',
               action: 'success',
             });
@@ -967,7 +961,6 @@ const Register: React.FC<RegisterProps> = React.memo(({
             setUsernameError('');
             setCurrentStep(3);
             showToast({
-              title: 'Success',
               description: 'Username is available',
               action: 'success',
             });
@@ -1026,11 +1019,10 @@ const Register: React.FC<RegisterProps> = React.memo(({
     register(userData, {
       onSuccess: () => {
         showToast({
-          title: 'Success',
           description: 'Account created successfully',
           action: 'success',
         });
-        router.push('/login');
+        router.push('/screens/Auth/Login/Login');
       },
       onError: async (error) => {
         // Cleanup temporary avatar if registration fails
@@ -1043,7 +1035,6 @@ const Register: React.FC<RegisterProps> = React.memo(({
         }
         
         showToast({
-          title: 'Error',
           description: error.response?.data?.error || 'Registration failed',
           action: 'error',
         });
@@ -1191,7 +1182,7 @@ const Register: React.FC<RegisterProps> = React.memo(({
               <Text className="text-gray-300 text-sm">
                 Already have an account?
               </Text>
-              <Pressable onPress={() => router.push('/login')}>
+              <Pressable onPress={() => router.push('/screens/Auth/Login/Login')}>
                 <Text className="text-blue-400 font-medium text-sm">
                   Sign In
                 </Text>

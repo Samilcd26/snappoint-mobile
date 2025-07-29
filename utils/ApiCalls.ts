@@ -1,10 +1,11 @@
 import { useToast } from "@/components/ui/toast";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { debugLogger } from './DebugLogger';
 
 // Axios instance setup
 const service = axios.create({
-  baseURL: "http://192.168.1.87:8080/api",
+  baseURL: "http://192.168.1.40:8080/api",
   timeout: 15000 // request timeout
 });
 
@@ -45,44 +46,60 @@ export const useShowToast = () => {
 export const apiCall = {
   get: async <T>(url: string, params?: any, includeToken: boolean = true): Promise<T> => {
       try {
+          debugLogger.logApiCall('GET', url, params);
           const response = await service.get<T>(url, { params, headers: { includeToken } });
+          debugLogger.logApiResponse('GET', url, response.status, response.data);
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
+          debugLogger.logApiError('GET', url, error);
           throw error;
       }
   },
 
   post: async <T>(url: string, data?: any, includeToken: boolean = true): Promise<T> => {
       try {
+          debugLogger.logApiCall('POST', url, data);
           const response = await service.post<T>(url, data, { headers: { includeToken } });
+          debugLogger.logApiResponse('POST', url, response.status, response.data);
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
+          debugLogger.logApiError('POST', url, error);
           throw error;
       }
   },
 
   put: async <T>(url: string, data?: any, includeToken: boolean = true): Promise<T> => {
       try {
+          debugLogger.logApiCall('PUT', url, data);
           const response = await service.put<T>(url, data, { headers: { includeToken } });
+          debugLogger.logApiResponse('PUT', url, response.status, response.data);
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
+          debugLogger.logApiError('PUT', url, error);
           throw error;
       }
   },
+
   patch: async <T>(url: string, data?: any, includeToken: boolean = true): Promise<T> => {
       try {
+          debugLogger.logApiCall('PATCH', url, data);
           const response = await service.patch<T>(url, data, { headers: { includeToken } });
+          debugLogger.logApiResponse('PATCH', url, response.status, response.data);
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
+          debugLogger.logApiError('PATCH', url, error);
           throw error;
       }
   },
 
   delete: async <T>(url: string, includeToken: boolean = true): Promise<T> => {
       try {
+          debugLogger.logApiCall('DELETE', url);
           const response = await service.delete<T>(url, { headers: { includeToken } });
+          debugLogger.logApiResponse('DELETE', url, response.status, response.data);
           return response.data;
-      } catch (error) {
+      } catch (error: any) {
+          debugLogger.logApiError('DELETE', url, error);
           throw error;
       }
   }
@@ -90,7 +107,7 @@ export const apiCall = {
 
 // Error handler
 export const useHandleApiError = () => {
-  const { showToast } = useShowToast();
+  const showToast = useShowToast();
 
   return async (error: any) => {
     if (!error.response) {
@@ -132,7 +149,7 @@ export const useHandleApiError = () => {
 
 // Başarılı işlemler için kullanılabilecek helper fonksiyonlar
 export const useSuccessMessages = () => {
-  const { showToast } = useShowToast();
+  const showToast = useShowToast();
 
   return {
     created: (entity: string) => showToast(`${entity} başarıyla oluşturuldu`),

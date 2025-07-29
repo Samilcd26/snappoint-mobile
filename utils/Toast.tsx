@@ -1,21 +1,19 @@
 import React from 'react';
 import { Button, ButtonText } from "@/components/ui/button";
-import { HStack } from "@/components/ui/hstack";
+import { Divider } from "@/components/ui/divider";
 import { Pressable } from "@/components/ui/pressable";
-import { useToast } from "@/components/ui/toast";
-import { Toast, ToastTitle, ToastDescription } from "@/components/ui/toast";
-import { VStack } from "@/components/ui/vstack";
+import { ToastDescription, useToast } from "@/components/ui/toast";
+import { Toast, ToastTitle } from "@/components/ui/toast";
 import { Icon, CloseIcon, CheckCircleIcon, AlertCircleIcon, InfoIcon, HelpCircleIcon } from "@/components/ui/icon";
+import { useTranslation } from "@/utils/useTranslation";
 
 export type ToastAction = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastOptions {
-  title: string;
   description: string;
   action: ToastAction;
   onRetry?: () => void;
   duration?: number;
-  placement?: 'top' | 'bottom' | 'top left' | 'top right' | 'bottom left' | 'bottom right';
 }
 
 // Her toast türü için icon ve stil yapılandırması
@@ -23,27 +21,35 @@ const getToastConfig = (action: ToastAction) => {
   const configs = {
     success: {
       icon: CheckCircleIcon,
-      iconClassName: "stroke-success-600",
-      variant: "solid" as const,
-      containerClassName: "border-success-500"
+      iconClassName: "stroke-success-600 fill-success-100",
+      dividerClassName: "bg-success-200",
+      retryClassName: "text-success-700",
+      toastVariant: 'outline' as const,
+      toastAction: 'success' as const
     },
     error: {
       icon: AlertCircleIcon,
-      iconClassName: "stroke-error-600",
-      variant: "outline" as const,
-      containerClassName: "border-error-500"
+      iconClassName: "stroke-error-600 fill-error-100",
+      dividerClassName: "bg-error-200",
+      retryClassName: "text-error-700",
+      toastVariant: 'outline' as const,
+      toastAction: 'error' as const
     },
     warning: {
       icon: HelpCircleIcon,
-      iconClassName: "stroke-warning-600",
-      variant: "outline" as const,
-      containerClassName: "border-warning-500"
+      iconClassName: "stroke-warning-600 fill-warning-100",
+      dividerClassName: "bg-warning-200",
+      retryClassName: "text-warning-700",
+      toastVariant: 'outline' as const,
+      toastAction: 'warning' as const
     },
     info: {
       icon: InfoIcon,
-      iconClassName: "stroke-info-600",
-      variant: "outline" as const,
-      containerClassName: "border-info-500"
+      iconClassName: "stroke-info-600 fill-info-100",
+      dividerClassName: "bg-info-200",
+      retryClassName: "text-info-700",
+      toastVariant: 'outline' as const,
+      toastAction: 'info' as const
     }
   };
   return configs[action];
@@ -51,15 +57,14 @@ const getToastConfig = (action: ToastAction) => {
 
 export const useShowToast = () => {
   const toast = useToast();
+  const { t } = useTranslation();
   const [activeToastId, setActiveToastId] = React.useState<string | null>(null);
 
   const showToast = ({ 
-    title, 
     description, 
     action, 
     onRetry, 
-    duration = 4000,
-    placement = 'top'
+    duration = 4000
   }: ToastOptions) => {
     // Eğer aktif toast varsa kapat
     if (activeToastId !== null && toast.isActive(activeToastId)) {
@@ -74,51 +79,33 @@ export const useShowToast = () => {
 
     toast.show({
       id,
-      placement,
+      placement: 'top',
       duration,
       render: ({ id }) => {
         const uniqueToastId = "toast-" + id;
         return (
           <Toast
-            action={action}
-            variant={config.variant}
             nativeID={uniqueToastId}
-            className={`p-4 gap-3 w-full sm:min-w-[386px] max-w-[386px] shadow-hard-2 flex-row justify-between ${config.containerClassName}`}
+            variant={config.toastVariant}
+            action={config.toastAction}
+            className="mx-4 mt-12 px-5 py-4 gap-4 shadow-soft-1 items-center flex-row rounded-2xl"
           >
-            <HStack space="md" className="flex-1">
-              <Icon
-                as={IconComponent}
-                size="lg"
-                className={`mt-0.5 ${config.iconClassName}`}
-              />
-              <VStack space="xs" className="flex-1">
-                <ToastTitle 
-                  className={`font-semibold ${
-                    config.variant === 'solid' 
-                      ? 'text-typography-50' 
-                      : action === 'success' ? 'text-success-700' :
-                        action === 'error' ? 'text-error-700' :
-                        action === 'warning' ? 'text-warning-700' :
-                        'text-info-700'
-                  }`}
-                >
-                  {title}
-                </ToastTitle>
-                <ToastDescription 
-                  size="sm" 
-                  className={`${
-                    config.variant === 'solid' 
-                      ? 'text-typography-100' 
-                      : 'text-typography-700'
-                  }`}
-                >
-                  {description}
-                </ToastDescription>
-              </VStack>
-            </HStack>
+            <Icon
+              as={IconComponent}
+              size="xl"
+              className={config.iconClassName}
+            />
+          
+            <ToastDescription className='text-sm leading-5'>
+            {description}
+            </ToastDescription>
             
-            <HStack className="gap-2 items-center">
-              {onRetry && (
+            {onRetry && (
+              <>
+                <Divider
+                  orientation="vertical"
+                  className={`h-[35px] ${config.dividerClassName}`}
+                />
                 <Button 
                   variant="link" 
                   size="sm" 
@@ -126,31 +113,25 @@ export const useShowToast = () => {
                   onPress={onRetry}
                 >
                   <ButtonText 
-                    className={`text-sm ${
-                      config.variant === 'solid' 
-                        ? 'text-typography-50' 
-                        : action === 'success' ? 'text-success-700' :
-                          action === 'error' ? 'text-error-700' :
-                          action === 'warning' ? 'text-warning-700' :
-                          'text-info-700'
-                    }`}
+                    className={`text-sm font-medium ${config.retryClassName}`}
                   >
-                    Tekrar Dene
+                    {t('toast.retry')}
                   </ButtonText>
                 </Button>
-              )}
-              <Pressable onPress={() => toast.close(id)} className="p-1">
-                <Icon 
-                  as={CloseIcon} 
-                  size="md"
-                  className={`${
-                    config.variant === 'solid' 
-                      ? 'stroke-typography-50' 
-                      : 'stroke-typography-500'
-                  }`}
-                />
-              </Pressable>
-            </HStack>
+              </>
+            )}
+            
+            <Divider
+              orientation="vertical"
+              className={`h-[35px] ${config.dividerClassName}`}
+            />
+            <Pressable onPress={() => toast.close(id)} className="p-1">
+              <Icon 
+                as={CloseIcon} 
+                size="md"
+                className="stroke-typography-500"
+              />
+            </Pressable>
           </Toast>
         );
       },
@@ -166,20 +147,20 @@ export const useShowToast = () => {
     return id;
   };
 
-  const showSuccessToast = (title: string, description: string, options?: Partial<ToastOptions>) => {
-    return showToast({ title, description, action: 'success', ...options });
+  const showSuccessToast = (description: string, options?: Partial<ToastOptions>) => {
+    return showToast({ description, action: 'success', ...options });
   };
 
-  const showErrorToast = (title: string, description: string, options?: Partial<ToastOptions>) => {
-    return showToast({ title, description, action: 'error', ...options });
+  const showErrorToast = (description: string, options?: Partial<ToastOptions>) => {
+    return showToast({ description, action: 'error', ...options });
   };
 
-  const showWarningToast = (title: string, description: string, options?: Partial<ToastOptions>) => {
-    return showToast({ title, description, action: 'warning', ...options });
+  const showWarningToast = (description: string, options?: Partial<ToastOptions>) => {
+    return showToast({ description, action: 'warning', ...options });
   };
 
-  const showInfoToast = (title: string, description: string, options?: Partial<ToastOptions>) => {
-    return showToast({ title, description, action: 'info', ...options });
+  const showInfoToast = (description: string, options?: Partial<ToastOptions>) => {
+    return showToast({ description, action: 'info', ...options });
   };
 
   const closeActiveToast = () => {

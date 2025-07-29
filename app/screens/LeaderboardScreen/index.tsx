@@ -15,7 +15,7 @@ export default function LeaderboardScreen() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [maxDistance, setMaxDistance] = useState(50);
-  const [profileImageModalVisible, setProfileImageModalVisible] = useState(false);
+  const [ImageViewModalVisible, setImageViewModalVisible] = useState(false);
   const [selectedProfileImage, setSelectedProfileImage] = useState<string>('');
   const { width } = Dimensions.get('window');
 
@@ -61,7 +61,7 @@ export default function LeaderboardScreen() {
   // Show profile image modal
   const handleProfileImagePress = (imageUrl: string) => {
     setSelectedProfileImage(imageUrl);
-    setProfileImageModalVisible(true);
+    setImageViewModalVisible(true);
   };
 
   // Render item for the leaderboard
@@ -357,22 +357,22 @@ export default function LeaderboardScreen() {
 
       {/* Profile Image Modal */}
       <Modal
-        visible={profileImageModalVisible}
+        visible={ImageViewModalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setProfileImageModalVisible(false)}
+        onRequestClose={() => setImageViewModalVisible(false)}
       >
         <View className="flex-1 bg-black bg-opacity-90 justify-center items-center">
           <TouchableOpacity 
             className="absolute top-12 right-4 z-10"
-            onPress={() => setProfileImageModalVisible(false)}
+            onPress={() => setImageViewModalVisible(false)}
           >
             <Ionicons name="close" size={30} color="white" />
           </TouchableOpacity>
           
           <TouchableOpacity 
             className="flex-1 justify-center items-center w-full"
-            onPress={() => setProfileImageModalVisible(false)}
+            onPress={() => setImageViewModalVisible(false)}
           >
             <Image 
               source={{ uri: selectedProfileImage }}

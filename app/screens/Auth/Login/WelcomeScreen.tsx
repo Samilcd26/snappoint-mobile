@@ -28,14 +28,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     try {
       await useAuthStore.getState().googleLogin();
       showToast({
-        title: 'Success',
         description: 'Google login successful',
         action: 'success',
       });
       router.replace('/(tabs)');
     } catch (error) {
       showToast({
-        title: 'Error',
         description: 'Google login failed. Please try again.',
         action: 'error',
       });
@@ -45,7 +43,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   const handleAppleLogin = () => {
     showToast({
-      title: 'Info',
       description: 'Apple login will be implemented soon',
       action: 'info',
     });
@@ -124,7 +121,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       {/* Sign Up Link */}
       <Box className="flex-row justify-center mt-8">
         <Text className="text-gray-400 text-base">Hesabınız yok mu? </Text>
-        <Pressable onPress={() => router.push('/register')}>
+        <Pressable onPress={() => router.push('/screens/Auth/Register')}>
           <Text className="text-blue-300 font-bold text-base">Kayıt olun</Text>
         </Pressable>
       </Box>

@@ -200,7 +200,7 @@ export async function generateThumbnail(uri: string): Promise<CompressedImageRes
 export async function smartCompress(uri: string): Promise<CompressedImageResult> {
   try {
     // Get original image info
-    const imageInfo = await ImageManipulator.manipulateAsync(uri, []);
+
     const originalSize = await getFileSize(uri);
     
     let config: CompressionConfig;

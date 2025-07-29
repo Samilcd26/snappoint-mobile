@@ -16,8 +16,8 @@ import {
 } from "@/types/post.types";
 
 // Get user posts
-export const useGetUserPosts = (userId: string, page = 1, pageSize = 30) => {
-  const { data, isLoading, error } = useQuery({
+export const useGetUserPosts = (userId: string | undefined, page = 1, pageSize = 30) => {
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['userPosts', userId, page, pageSize],
     queryFn: async () => {
       const response = await apiCall.get<GetUserPostsResponse>(
@@ -32,19 +32,20 @@ export const useGetUserPosts = (userId: string, page = 1, pageSize = 30) => {
     pagination: data?.pagination,
     isLoading, 
     error,
-    success: data?.success
+    success: data?.success,
+    refetch
   };
 };
 
 // Get post detail by ID
-export const useGetPostDetail = (postId: string) => {
+export const useGetPostDetail = (postId: string | undefined, enabled: boolean = true) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['post', postId],
     queryFn: async () => {
       const response = await apiCall.get<GetPostDetailResponse>(`/posts/${postId}`);
       return response;
     },
-    enabled: !!postId,
+    enabled: enabled && !!postId,
   });
   return { 
     post: data?.data,
@@ -56,10 +57,11 @@ export const useGetPostDetail = (postId: string) => {
 
 // Get user posts at specific place
 export const useGetUserPostsAtPlace = (
-  userId: string, 
-  placeId: string, 
+  userId: string | undefined, 
+  placeId: string | undefined, 
   page = 1, 
-  pageSize = 30
+  pageSize = 30,
+  enabled: boolean = true
 ) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['userPostsAtPlace', userId, placeId, page, pageSize],
@@ -69,7 +71,7 @@ export const useGetUserPostsAtPlace = (
       );
       return response;
     },
-    enabled: !!userId && !!placeId,
+    enabled: enabled && !!userId && !!placeId,
   });
   return { 
     posts: data?.data || [],
@@ -84,7 +86,7 @@ export const useGetUserPostsAtPlace = (
 };
 
 // Get place posts grid
-export const useGetPlacePostsGrid = (placeId: number | undefined, page = 1, pageSize = 30) => {
+export const useGetPlacePostsGrid = (placeId: number | undefined, page = 1, pageSize = 30, enabled = true) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['placePostsGrid', placeId, page, pageSize],
     queryFn: async () => {
@@ -93,7 +95,13 @@ export const useGetPlacePostsGrid = (placeId: number | undefined, page = 1, page
       );
       return response;
     },
-    enabled: !!placeId,
+    enabled: enabled && !!placeId,
+    staleTime: 1000 * 15, // 15 seconds cache - fresh posts quickly
+    gcTime: 1000 * 60 * 1, // 1 minute garbage collection
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: false, // Prevent refetch on remount
+    retry: 1, // Only retry once
+    refetchOnReconnect: true, // Refetch when internet comes back
   });
   return { 
     posts: data?.data || [],
@@ -115,11 +123,15 @@ export const useCreatePost = () => {
       return response;
     },
     onSuccess: (response) => {
-      // Invalidate and refetch posts queries
+      // Invalidate and refetch posts queries - force fresh data
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
       queryClient.invalidateQueries({ queryKey: ['userPostsAtPlace'] });
       queryClient.invalidateQueries({ queryKey: ['placePostsGrid'] });
       queryClient.invalidateQueries({ queryKey: ['markers'] });
+      queryClient.invalidateQueries({ queryKey: ['place'] }); // Also invalidate place details
+      
+      // Force refetch to show new post immediately
+      queryClient.refetchQueries({ queryKey: ['placePostsGrid'] });
       
       return response.data; // Return the created post
     },
@@ -179,55 +191,36 @@ export const useLikePost = () => {
   
   return useMutation({
     mutationFn: async (postId: string) => {
-      const response = await apiCall.post<StandardResponse<void>>(`/posts/${postId}/like`);
+      const response = await apiCall.post<StandardResponse<{liked: boolean}>>(`/posts/${postId}/like`);
       return response;
     },
-    onSuccess: (_, postId) => {
-      // Update the post in the cache
-      queryClient.setQueryData(['post', postId], (oldData: GetPostDetailResponse | undefined) => {
-        if (!oldData?.data) return oldData;
-        return {
-          ...oldData,
-          data: {
-            ...oldData.data,
-            interaction: {
-              ...oldData.data.interaction,
-              likesCount: oldData.data.interaction.likesCount + 1,
-              isLiked: true
-            }
-          }
-        };
-      });
+    onSuccess: (response, postId) => {
+      const isLiked = response.data?.liked || false;
       
-      // Invalidate lists to refresh like counts
-      queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['userPostsAtPlace'] });
-      queryClient.invalidateQueries({ queryKey: ['placePostsGrid'] });
-    },
-  });
-};
-
-// Unlike a post (if you have this endpoint)
-export const useUnlikePost = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async (postId: string) => {
-      const response = await apiCall.delete<StandardResponse<void>>(`/posts/${postId}/like`);
-      return response;
-    },
-    onSuccess: (_, postId) => {
       // Update the post in the cache
       queryClient.setQueryData(['post', postId], (oldData: GetPostDetailResponse | undefined) => {
         if (!oldData?.data) return oldData;
+        
+        const currentLikesCount = oldData.data.interaction.likesCount;
+        const wasLiked = oldData.data.interaction.isLiked;
+        
+        let newLikesCount = currentLikesCount;
+        if (isLiked && !wasLiked) {
+          // Was not liked, now liked
+          newLikesCount = currentLikesCount + 1;
+        } else if (!isLiked && wasLiked) {
+          // Was liked, now not liked
+          newLikesCount = Math.max(0, currentLikesCount - 1);
+        }
+        
         return {
           ...oldData,
           data: {
             ...oldData.data,
             interaction: {
               ...oldData.data.interaction,
-              likesCount: Math.max(0, oldData.data.interaction.likesCount - 1),
-              isLiked: false
+              likesCount: newLikesCount,
+              isLiked: isLiked
             }
           }
         };

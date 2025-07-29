@@ -8,8 +8,7 @@ import { FormControl, FormControlLabel, FormControlLabelText } from '@/component
 import { Pressable, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Input, InputField, InputIcon, InputSlot } from "@/components/ui/input";
-import { Icon } from '@/components/ui/icon';
-import { ArrowLeftIcon, MailIcon, EyeIcon, EyeOffIcon, CheckIcon } from '@/components/ui/icon';
+import { Icon , ArrowLeftIcon, MailIcon, EyeIcon, EyeOffIcon, CheckIcon } from '@/components/ui/icon';
 import { useAuthStore } from '@/stores';
 import { useVerifyEmail } from '@/api/authApi';
 import { useShowToast } from '@/utils/Toast';
@@ -77,7 +76,6 @@ export const SystemLoginForm: React.FC<SystemLoginFormProps> = ({
             setEmailVerified(true);
             setEmailError('');
             showToast({
-              title: 'Success',
               description: 'Email verified successfully',
               action: 'success',
             });
@@ -96,14 +94,12 @@ export const SystemLoginForm: React.FC<SystemLoginFormProps> = ({
     try {
       await login(email, password);
       showToast({
-        title: 'Success',
         description: 'Login successful',
         action: 'success',
       });
       router.replace('/(tabs)');
     } catch (error) {
       showToast({
-        title: 'Error',
         description: 'Login failed. Please check your credentials.',
         action: 'error',
       });

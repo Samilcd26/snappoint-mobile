@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "snap-point",
-    "slug": "snap-point",
+    "name": "yertale",
+    "slug": "yertale",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "com.snap-point.app",
+    "scheme": "com.yertale.app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.snap-point.app",
+      "bundleIdentifier": "com.yertale.app",
       "config": {
         "googleMapsApiKey": "AIzaSyCOzJkybaSIWE5VgbOSjxXQuOCllBtjnKY"
       }
@@ -19,12 +19,16 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png"
       },
-      "package": "com.snap-point.app",
+      "package": "com.samilcdemir.yertale",
       "config": {
         "googleMaps": {
           "apiKey": "process.env.GOOGLE_MAPS_API_KEY"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -52,6 +56,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3e41d45c-035c-4fbe-a2e2-05d895b1ca59"
+      }
     }
   }
 }

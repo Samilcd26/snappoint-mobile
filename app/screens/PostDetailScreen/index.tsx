@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, FlatList, Image, Dimensions, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, FlatList, Image, Dimensions, TextInput, ActivityIndicator, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGetPostDetail, useGetUserPostsAtPlace, useLikePost } from '@/api/postApi';
 import { SafeAreaView } from '@/components/ui/safe-area-view';
+import CommentsModal from './CommentsModal';
+import { useShowToast } from '@/utils/Toast';
+import { formatNumber } from '@/utils/formatNumber';
+import { Divider } from '@/components/ui/divider';
 
 // Type for unified post representation
 interface UnifiedPost {
@@ -13,12 +17,14 @@ interface UnifiedPost {
   caption: string;
   imageUrls: string[];
   likes: number;
+  comments: number;
   timestamp: string;
   location?: {
     name: string;
     latitude?: number;
     longitude?: number;
   };
+  isLiked: boolean;
 }
 
 const PostDetailScreen = () => {
@@ -27,9 +33,14 @@ const PostDetailScreen = () => {
     userId?: string;
     placeId?: string; 
   }>();
+
+  
+
+  const { showToast } = useShowToast();
   
   const router = useRouter();
-  const [likedPosts, setLikedPosts] = useState<Record<string, number>>({});
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState<string>('');
   const likePostMutation = useLikePost();
 
   // Determine which API to use based on params - memoized to prevent infinite loops
@@ -48,13 +59,30 @@ const PostDetailScreen = () => {
     post, 
     isLoading: isSinglePostLoading, 
     error: singlePostError 
-  } = useGetPostDetail(params.postId || '');
+  } = useGetPostDetail(params.postId );
 
   const { 
     posts: userPostsAtPlace, 
     isLoading: isMultiplePostsLoading, 
     error: multiplePostsError 
-  } = useGetUserPostsAtPlace(params.userId || '', params.placeId || '');
+  } = useGetUserPostsAtPlace(
+    params.userId , 
+    params.placeId ,
+    1, // page
+    30, // pageSize
+  );
+
+  const goToUserProfile = (user: any) => {
+    if (user.authorId) {
+      router.push(`/screens/UserProfileScreen?userId=${user.authorId}`);
+    }
+    else {
+     showToast({
+      description: 'User not found',
+      action: 'error',
+    });
+    }
+  };
 
   // Calculate local posts directly with useMemo to prevent infinite loops
   const localPosts = useMemo(() => {
@@ -62,53 +90,53 @@ const PostDetailScreen = () => {
       return [{
         id: post.id.toString(),
         author: `${post.user.firstName} ${post.user.lastName}`,
+        authorId: post.user.id,
         authorAvatar: post.user.avatar,
         caption: post.caption,
         imageUrls: post.mediaItems.map(item => item.mediaUrl),
-        likes: post.interaction.likesCount + (likedPosts[post.id.toString()] || 0),
-        timestamp: new Date(post.createdAt).toLocaleDateString(),
+        likes: post.interaction.likesCount,
+        comments: post.interaction.commentsCount || 0,
+        timestamp: new Date(post.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
         location: {
           name: post.place.name,
           latitude: post.latitude,
           longitude: post.longitude
-        }
+        },
+        isLiked: post.interaction.isLiked
       }];
     } else if (shouldFetchMultiplePosts && userPostsAtPlace) {
       return userPostsAtPlace.map(postSummary => ({
         id: postSummary.id.toString(),
         author: `${postSummary.user.firstName} ${postSummary.user.lastName}`,
+        authorId: postSummary.user.id,
         authorAvatar: postSummary.user.avatar,
         caption: postSummary.caption,
         imageUrls: [postSummary.thumbnailUrl],
-        likes: postSummary.interaction.likesCount + (likedPosts[postSummary.id.toString()] || 0),
-        timestamp: new Date(postSummary.createdAt).toLocaleDateString(),
+        likes: postSummary.interaction.likesCount,
+        comments: postSummary.interaction.commentsCount || 0,
+        timestamp: new Date(postSummary.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
         location: {
           name: postSummary.place.name,
           latitude: postSummary.latitude,
           longitude: postSummary.longitude
-        }
+        },
+        isLiked: postSummary.interaction.isLiked
       }));
     }
     return [];
-  }, [shouldFetchSinglePost, shouldFetchMultiplePosts, post, userPostsAtPlace, likedPosts]);
+  }, [shouldFetchSinglePost, shouldFetchMultiplePosts, post, userPostsAtPlace]);
 
   const handleLikePost = async (postId: string) => {
-    // Optimistically update the likes
-    setLikedPosts(prev => ({
-      ...prev,
-      [postId]: (prev[postId] || 0) + 1
-    }));
-    
     try {
       await likePostMutation.mutateAsync(postId);
     } catch (error) {
-      // Revert on error
-      setLikedPosts(prev => ({
-        ...prev,
-        [postId]: Math.max(0, (prev[postId] || 0) - 1)
-      }));
       console.error('Error liking post:', error);
     }
+  };
+
+  const handleOpenComments = (postId: string) => {
+    setSelectedPostId(postId);
+    setCommentsModalVisible(true);
   };
 
   const renderPostHeader = (post: UnifiedPost) => (
@@ -125,9 +153,15 @@ const PostDetailScreen = () => {
         )}
       </View>
       <View className="ml-3">
+        <Pressable onPress={() => goToUserProfile(post)}>
         <Text className="font-bold text-gray-900">{post.author}</Text>
+        </Pressable>
         {post.location && (
-          <Text className="text-gray-500 text-sm">{post.location.name}</Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-gray-500 text-sm">{post.location.name}</Text>
+            <Text className="text-gray-500 text-sm">•</Text>
+            <Text className="text-gray-500 text-sm">{post.timestamp}</Text>
+          </View>
         )}
       </View>
     </View>
@@ -135,6 +169,16 @@ const PostDetailScreen = () => {
 
   const renderPostImages = (post: UnifiedPost) => {
     const windowWidth = Dimensions.get('window').width;
+    let lastTap = 0;
+
+    const handleDoubleTap = () => {
+      const now = Date.now();
+      const DOUBLE_PRESS_DELAY = 300;
+      if (now - lastTap < DOUBLE_PRESS_DELAY) {
+        handleLikePost(post.id);
+      }
+      lastTap = now;
+    };
     
     return (
       <FlatList
@@ -144,7 +188,11 @@ const PostDetailScreen = () => {
         showsHorizontalScrollIndicator={true}
         keyExtractor={(item: string, index: number) => `image-${post.id}-${index}`}
         renderItem={({ item, index }: { item: string; index: number }) => (
-          <View className="relative">
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={handleDoubleTap}
+            className="relative"
+          >
             <Image
               source={{ uri: item }}
               style={{ width: windowWidth, height: windowWidth }}
@@ -156,102 +204,54 @@ const PostDetailScreen = () => {
                 <Text className="text-blue-600 font-semibold">{index + 1}/{post.imageUrls.length}</Text>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
     );
   };
 
   const renderPostActions = (post: UnifiedPost) => (
-    <View className="flex-row justify-between p-4 bg-white border-t border-gray-200">
-      <View className="flex-row space-x-4">
-        <TouchableOpacity onPress={() => handleLikePost(post.id)}>
-          <Ionicons 
-            name={likePostMutation.isPending ? "heart" : "heart-outline"} 
-            size={28} 
-            color="#3b82f6" 
-          />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="chatbubble-outline" size={28} color="#3b82f6" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <Ionicons name="paper-plane-outline" size={28} color="#3b82f6" />
-        </TouchableOpacity>
+    <View className="bg-white border-t border-gray-200">
+      <View className="flex-row justify-between p-6">
+        <View className="flex-row gap-3">
+          <TouchableOpacity 
+            onPress={() => handleLikePost(post.id)}
+            className="items-center"
+          >
+            <Ionicons 
+              name={post.isLiked ? "heart" : "heart-outline"} 
+              size={28} 
+              color={post.isLiked ? "#ef4444" : "#3b82f6"} 
+            />
+            <Text className={`text-xs mt-2 ${post.isLiked ? 'text-red-500' : 'text-gray-500'}`}>
+              {formatNumber(post.likes)}
+            </Text>
+          </TouchableOpacity>
+          
+          <Divider orientation="vertical" className="h-10 bg-gray-300" />
+          
+          <TouchableOpacity 
+            onPress={() => handleOpenComments(post.id)}
+            className="items-center"
+          >
+            <Ionicons name="chatbubble-outline" size={28} color="#3b82f6" />
+            <Text className="text-xs mt-2 text-gray-500">
+              {formatNumber(post.comments)}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <TouchableOpacity>
-        <Ionicons name="bookmark-outline" size={28} color="#3b82f6" />
-      </TouchableOpacity>
     </View>
   );
 
   const renderPostContent = (post: UnifiedPost) => (
     <View>
-      {/* Likes */}
-      <Text className="px-4 py-2 font-bold text-gray-900 bg-white">
-        {post.likes} likes
-      </Text>
-
       {/* Caption */}
-      <View className="p-4 bg-white">
-        <Text className="text-gray-900">
-          <Text className="font-bold">{post.author}</Text> {post.caption}
+      {post.caption && (
+        <Text className="px-4 py-2 text-gray-900 bg-white">
+          {post.caption}
         </Text>
-        <Text className="text-gray-500 text-sm mt-2">
-          {post.timestamp}
-        </Text>
-      </View>
-
-      {/* Comments Section */}
-      <View className="p-4 border-t border-gray-200 bg-white">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-gray-900 font-semibold">Comments</Text>
-          <TouchableOpacity>
-            <Text className="text-blue-600 font-semibold">View all</Text>
-          </TouchableOpacity>
-        </View>
-        <View className="flex-row items-start space-x-3">
-          <View className="w-8 h-8 rounded-full bg-blue-50 justify-center items-center overflow-hidden">
-            <Text className="text-blue-600 font-bold text-xs">U</Text>
-          </View>
-          <View className="flex-1">
-            <View className="bg-gray-50 rounded-xl p-3">
-              <View className="flex-row justify-between items-start">
-                <Text className="text-gray-900 font-semibold">user123</Text>
-                <Text className="text-gray-400 text-xs">1 hour ago</Text>
-              </View>
-              <Text className="text-gray-700 mt-1">Great photo! The lighting is perfect 👌</Text>
-            </View>
-            <View className="flex-row items-center mt-2 space-x-4">
-              <TouchableOpacity>
-                <Text className="text-gray-500 text-sm">Like</Text>
-              </TouchableOpacity>
-              <TouchableOpacity>
-                <Text className="text-gray-500 text-sm">Reply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-      
-      {/* Add Comment Input */}
-      <View className="px-4 pb-6 bg-white">
-        <View className="flex-row items-center space-x-2">
-          <View className="w-8 h-8 rounded-full bg-blue-50 justify-center items-center overflow-hidden">
-            <Text className="text-blue-600 font-bold text-xs">U</Text>
-          </View>
-          <View className="flex-1 bg-gray-50 rounded-xl px-3 py-2">
-            <TextInput
-              placeholder="Add a comment..."
-              placeholderTextColor="#9CA3AF"
-              className="text-gray-900"
-            />
-          </View>
-          <TouchableOpacity className="bg-blue-50 p-2 rounded-xl">
-            <Ionicons name="send" size={20} color="#3b82f6" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      )}
     </View>
   );
 
@@ -366,6 +366,13 @@ const PostDetailScreen = () => {
 
       {/* Content */}
       {shouldFetchMultiplePosts ? renderMultiplePosts() : renderSinglePost()}
+      
+      {/* Comments Modal */}
+      <CommentsModal
+        isVisible={commentsModalVisible}
+        onClose={() => setCommentsModalVisible(false)}
+        postId={selectedPostId}
+      />
     </SafeAreaView>
   );
 };

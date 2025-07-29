@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Modal, StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
 import { VStack, Text, Box, Switch, Button, HStack } from '@/components/ui';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FilterOptions } from '@/types/Marker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Props arayüzü
 interface FilterModalProps {
   isVisible: boolean;
   onClose: () => void;
   onApplyFilters: (filters: FilterOptions) => void;
-  initialFilters?: FilterOptions;
+  initialFilters: FilterOptions;
 }
 
+// Kategori verileri ve tipi
 interface CategoryOption {
   name: string;
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -26,38 +29,33 @@ const CATEGORIES: CategoryOption[] = [
   { name: "Historical", icon: "account-balance" },
 ];
 
-const DEFAULT_FILTERS: FilterOptions = {
-  hideVisited: false,
-  categories: [],
-  radius: 1000,
-  zoomLevel: 15,
-};
-
+// Ana bileşen
 const FilterModal: React.FC<FilterModalProps> = ({
   isVisible,
   onClose,
   onApplyFilters,
-  initialFilters = DEFAULT_FILTERS,
+  initialFilters,
 }) => {
-  const [filters, setFilters] = useState<FilterOptions>({
-    ...DEFAULT_FILTERS,
-    ...initialFilters,
-    categories: initialFilters.categories || [],
-  });
+  const [filters, setFilters] = useState<FilterOptions>(initialFilters);
+  const insets = useSafeAreaInsets();
 
-  const handleApplyFilters = () => {
+  const handleApply = useCallback(() => {
     onApplyFilters(filters);
     onClose();
-  };
+  }, [filters, onApplyFilters, onClose]);
 
-  const toggleCategory = (categoryName: string) => {
-    setFilters(prev => ({
-      ...prev,
-      categories: prev.categories.includes(categoryName)
+  const handleToggleCategory = useCallback((categoryName: string) => {
+    setFilters(prev => {
+      const newCategories = prev.categories.includes(categoryName)
         ? prev.categories.filter(cat => cat !== categoryName)
-        : [...prev.categories, categoryName]
-    }));
-  };
+        : [...prev.categories, categoryName];
+      return { ...prev, categories: newCategories };
+    });
+  }, []);
+
+  const handleToggleVisited = useCallback((value: boolean) => {
+    setFilters(prev => ({ ...prev, hideVisited: value }));
+  }, []);
 
   return (
     <Modal
@@ -66,73 +64,92 @@ const FilterModal: React.FC<FilterModalProps> = ({
       visible={isVisible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Box style={{padding: 16, width: '100%'}}>
-            <Text style={{fontSize: 20, fontWeight: 'bold', marginBottom: 16}}>Filter Places</Text>
-            
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <VStack space="md" style={{width: '100%'}}>
-                {/* Hide Visited Toggle */}
-                <HStack style={{justifyContent: 'space-between', alignItems: 'center'}}>
-                  <Text>Hide Visited Places</Text>
-                  <Switch
-                    value={filters.hideVisited}
-                    onToggle={(value) => setFilters({...filters, hideVisited: value})}
-                  />
-                </HStack>
-
-                {/* Categories Horizontal Scroll */}
-                <VStack space="sm">
-                  <Text>Categories</Text>
-                  <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.categoriesContainer}
-                  >
-                    {CATEGORIES.map((category) => (
-                      <TouchableOpacity
-                        key={category.name}
-                        style={[
-                          styles.categoryButton,
-                          filters.categories.includes(category.name) && styles.categoryButtonSelected
-                        ]}
-                        onPress={() => toggleCategory(category.name)}
-                      >
-                        <MaterialIcons
-                          name={category.icon}
-                          size={24}
-                          color={filters.categories.includes(category.name) ? 'white' : '#666'}
-                        />
-                        <Text
-                          style={[
-                            styles.categoryText,
-                            filters.categories.includes(category.name) && styles.categoryTextSelected
-                          ]}
-                        >
-                          {category.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </VStack>
-              </VStack>
-            </ScrollView>
-
-            <HStack space="md" style={{marginTop: 24, justifyContent: 'space-between'}}>
-              <Button variant="outline" style={{flex: 1}} onPress={onClose}>
-                <Text>Cancel</Text>
-              </Button>
-              <Button style={{flex: 1}} onPress={handleApplyFilters}>
-                <Text style={{color: 'white'}}>Apply Filters</Text>
-              </Button>
-            </HStack>
+      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.modalContent, { paddingBottom: insets.bottom || 16 }]}>
+          <Box style={styles.header}>
+            <Text style={styles.headerText}>Filter Places</Text>
           </Box>
+          
+          <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <VStack space="lg" style={{width: '100%'}}>
+              <VisitedToggle filters={filters} onToggle={handleToggleVisited} />
+              <CategoriesSection filters={filters} onToggleCategory={handleToggleCategory} />
+            </VStack>
+          </ScrollView>
+
+          <HStack space="md" style={styles.footer}>
+            <Button variant="outline" style={{flex: 1}} onPress={onClose}>
+              <Text>Cancel</Text>
+            </Button>
+            <Button style={{flex: 1}} onPress={handleApply}>
+              <Text style={{color: 'white'}}>Apply Filters</Text>
+            </Button>
+          </HStack>
         </View>
-      </View>
+      </TouchableOpacity>
     </Modal>
   );
 };
+
+
+// --- Alt Bileşenler ---
+
+const VisitedToggle: React.FC<{ filters: FilterOptions; onToggle: (value: boolean) => void; }> = React.memo(({ filters, onToggle }) => (
+  <VStack space="sm">
+    <HStack style={styles.toggleRow}>
+      <VStack space="xs" style={{flex: 1}}>
+        <Text style={styles.toggleTitle}>Posted Places</Text>
+        <Text style={styles.toggleSubtitle}>
+          {filters.hideVisited ? 'Hiding places you posted' : 'Showing places you posted'}
+        </Text>
+      </VStack>
+      <Switch value={filters.hideVisited} onToggle={onToggle} />
+    </HStack>
+    {filters.hideVisited && <WarningMessage />}
+  </VStack>
+));
+
+const WarningMessage: React.FC = React.memo(() => (
+  <Box style={styles.warningBox}>
+    <Text style={styles.warningTitle}>⚠️ Places you posted will not be visible on the map.</Text>
+    <Text style={styles.warningSubtitle}>You can see all places by turning this option off.</Text>
+  </Box>
+));
+
+const CategoriesSection: React.FC<{ filters: FilterOptions; onToggleCategory: (name: string) => void }> = React.memo(({ filters, onToggleCategory }) => (
+  <VStack space="sm">
+    <Text style={styles.sectionTitle}>Categories</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
+      {CATEGORIES.map((category) => (
+        <CategoryButton
+          key={category.name}
+          category={category}
+          isSelected={filters.categories.includes(category.name)}
+          onPress={onToggleCategory}
+        />
+      ))}
+    </ScrollView>
+  </VStack>
+));
+
+const CategoryButton: React.FC<{ category: CategoryOption; isSelected: boolean; onPress: (name: string) => void }> = React.memo(({ category, isSelected, onPress }) => (
+  <TouchableOpacity
+    style={[styles.categoryButton, isSelected && styles.categoryButtonSelected]}
+    onPress={() => onPress(category.name)}
+  >
+    <MaterialIcons
+      name={category.icon}
+      size={22}
+      color={isSelected ? 'white' : '#555'}
+    />
+    <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>
+      {category.name}
+    </Text>
+  </TouchableOpacity>
+));
+
+
+// --- Stil Tanımları ---
 
 const styles = StyleSheet.create({
   modalOverlay: {
@@ -142,35 +159,87 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingVertical: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '80%',
+    overflow: 'hidden',
+  },
+  header: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  scrollContainer: {
+    padding: 20,
+  },
+  footer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  toggleRow: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  toggleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  toggleSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  warningTitle: {
+    fontSize: 13,
+    color: '#92400e',
+    fontWeight: '500',
+  },
+  warningSubtitle: {
+    fontSize: 11,
+    color: '#a16207',
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
   },
   categoriesContainer: {
     paddingVertical: 8,
-    gap: 8,
+    gap: 12,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f4f4f5',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
+    paddingVertical: 10,
+    borderRadius: 24,
     gap: 8,
   },
   categoryButtonSelected: {
     backgroundColor: '#0891b2',
   },
   categoryText: {
-    color: '#666',
+    color: '#555',
     fontSize: 14,
+    fontWeight: '500',
   },
   categoryTextSelected: {
     color: 'white',
   },
 });
 
-export default FilterModal; 
+export default React.memo(FilterModal);

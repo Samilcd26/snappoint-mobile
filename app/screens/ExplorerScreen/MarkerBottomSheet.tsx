@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,8 @@ import {
   Image,
   FlatList,
   ActivityIndicator,
-  ScrollView
+  ScrollView,
+  Alert 
 } from 'react-native';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,7 +24,6 @@ import { TopUser } from '@/types/Place';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar, AvatarImage, AvatarFallbackText } from '@/components/ui/avatar';
 import * as Location from 'expo-location';
-import { Alert } from 'react-native';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
@@ -31,43 +31,41 @@ interface MarkerBottomSheetProps {
   isVisible: boolean;
   onClose: () => void;
   marker: MarkerType | null;
-  onPostAt: () => void;
-  onPostPress: (post: PostSummary) => void;
-  onUserPress: (userId: string) => void;
   onShowLocation?: (latitude: number, longitude: number) => void;
 }
 
-const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({ 
+const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = React.memo(({ 
   isVisible, 
   onClose, 
   marker, 
-  onPostAt, 
-  onPostPress,
-  onUserPress,
   onShowLocation 
 }) => {
   const router = useRouter();
   const translateY = useRef(new Animated.Value(screenHeight)).current;
   const [YERTALEs] = useState({
-    min: screenHeight * 0.4, // 40% of screen - biraz daha büyük yaptım
-    max: screenHeight * 0.9   // 90% of screen
+    min: screenHeight * 0.4,
+    max: screenHeight * 0.9
   });
+
   const [currentYERTALE, setCurrentYERTALE] = useState(YERTALEs.min);
   const [currentPage, setCurrentPage] = useState(1);
   const [allPosts, setAllPosts] = useState<PostSummary[]>([]);
   const [isCheckingLocation, setIsCheckingLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const prevPageRef = useRef<number>(0);
   
-  // Fetch place data - daha fazla post çekiyoruz
-  const { data: placeDetail, isLoading } = useGetPlaceById(marker?.id );
+  // Fetch place data - only when modal is visible
+  const { data: placeDetail, isLoading } = useGetPlaceById(marker?.id, isVisible && !!marker?.id);
+
   const { 
     posts: placePosts, 
     isLoading: postsLoading, 
     pagination,
     error: postsError
-  } = useGetPlacePostsGrid(marker?.id, currentPage, 12);
+  } = useGetPlacePostsGrid(marker?.id, currentPage, 20, isVisible && !!marker?.id);
 
-  // Konum doğrulama API hook'u - sadece gerekli durumlarda çalıştır
+
+  // Location validation API hook
   const { 
     data: validationResult, 
     isLoading: isValidating, 
@@ -79,7 +77,18 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     isCheckingLocation && !!userLocation && !!marker
   );
 
-  // Kullanıcı konumunu al
+  // Reset states when modal opens with new marker
+  useEffect(() => {
+    if (isVisible && marker) {
+      // Batch state updates
+      setCurrentPage(1);
+      setAllPosts([]);
+      setIsCheckingLocation(false);
+      prevPageRef.current = 0;
+    }
+  }, [isVisible, marker?.id]);
+
+  // Get user location
   useEffect(() => {
     const getUserLocation = async () => {
       try {
@@ -89,9 +98,19 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
             accuracy: Location.Accuracy.High,
             timeInterval: 5000,
           });
-          setUserLocation({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude
+          // Sadece location değiştiğinde set et
+          setUserLocation(prevLocation => {
+            const newLocation = {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude
+            };
+            // Aynı location ise state'i güncelleme
+            if (prevLocation && 
+                Math.abs(prevLocation.latitude - newLocation.latitude) < 0.0001 && 
+                Math.abs(prevLocation.longitude - newLocation.longitude) < 0.0001) {
+              return prevLocation;
+            }
+            return newLocation;
           });
         }
       } catch (error) {
@@ -102,24 +121,24 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     if (isVisible && marker) {
       getUserLocation();
     }
-  }, [isVisible, marker]);
+  }, [isVisible, marker?.id]);
 
-  // Accumulate posts when new page data arrives
+  // Accumulate posts when new page data arrives - Fixed infinite loop
   useEffect(() => {
-    if (placePosts && placePosts.length > 0) {
-      if (currentPage === 1) {
-        setAllPosts(placePosts);
-      } else {
-        setAllPosts(prev => [...prev, ...placePosts]);
-      }
+    // Sadece yeni data geldiğinde çalışsın
+    if (placePosts && !postsLoading && prevPageRef.current !== currentPage && currentPage === 1) {
+      prevPageRef.current = currentPage;
+      setAllPosts(placePosts || []);
+    } else if (placePosts && !postsLoading && prevPageRef.current !== currentPage && currentPage > 1 && placePosts.length > 0) {
+      prevPageRef.current = currentPage;
+      setAllPosts(prev => [...prev, ...placePosts]);
     }
-  }, [placePosts, currentPage]);
+  }, [placePosts, currentPage, postsLoading]);
 
   // Close modal when navigating away from the screen
   useFocusEffect(
     React.useCallback(() => {
       return () => {
-        // Screen is unfocused (navigating away), close modal
         if (isVisible) {
           onClose();
         }
@@ -127,27 +146,39 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     }, [isVisible, onClose])
   );
 
+  // Handle modal animations
   useEffect(() => {
     if (isVisible) {
-      // Reset posts when opening
-      setCurrentPage(1);
-      setAllPosts([]);
-      // Animate in
       Animated.timing(translateY, {
         toValue: screenHeight - YERTALEs.min,
         duration: 400,
         useNativeDriver: true,
       }).start();
-      setCurrentYERTALE(YERTALEs.min);
-    } else {
-      // Animate out
-      Animated.timing(translateY, {
-        toValue: screenHeight,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
     }
   }, [isVisible]);
+
+  // Internal navigation handlers - moved from ExplorerScreen
+  const handlePostPress = useCallback((post: PostSummary) => {
+    router.push({
+      pathname: '/screens/PostDetailScreen',
+      params: {
+        userId: post.user.id.toString(),
+        placeId: marker?.id.toString(),
+        postId: post.id.toString(),
+      }
+    });
+  }, [router, marker?.id]);
+
+  const handleUserPress = useCallback((userId: string) => {
+    router.push(`/screens/UserProfileScreen?userId=${userId}`);
+  }, [router]);
+
+  const handleShowLocationInternal = useCallback((latitude: number, longitude: number) => {
+    onClose();
+    if (onShowLocation) {
+      onShowLocation(latitude, longitude);
+    }
+  }, [onClose, onShowLocation]);
 
   const handleGestureEvent = (event: any) => {
     const { translationY: gestureTranslationY } = event.nativeEvent;
@@ -164,42 +195,36 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     
     let targetY;
     let newYERTALE;
-    let animationConfig = { tension: 80, friction: 10 }; // Default yumuşak animasyon
+    let animationConfig = { tension: 80, friction: 10 };
     
     if (velocityY > 1200) {
-      // Very fast swipe down - close
       targetY = screenHeight;
       onClose();
       return;
     } else if (velocityY < -200) {
-      // Gentle swipe up - expand (daha da yumuşak threshold)
       targetY = screenHeight - YERTALEs.max;
       newYERTALE = YERTALEs.max;
-      animationConfig = { tension: 60, friction: 12 }; // Yukarı çıkarken daha yumuşak
+      animationConfig = { tension: 60, friction: 12 };
     } else if (velocityY > 200) {
-      // Gentle swipe down - collapse yumuşakça
       targetY = screenHeight - YERTALEs.min;
       newYERTALE = YERTALEs.min;
-      animationConfig = { tension: 70, friction: 11 }; // Aşağı inerken yumuşak
+      animationConfig = { tension: 70, friction: 11 };
     } else {
-      // Determine snap point based on position with more tolerance
       const middlePoint = screenHeight - (YERTALEs.min + YERTALEs.max) / 2;
-      const closeThreshold = screenHeight - YERTALEs.min + 100; // Daha geniş kapatma alanı
+      const closeThreshold = screenHeight - YERTALEs.min + 100;
       
       if (currentY > closeThreshold) {
         targetY = screenHeight;
         onClose();
         return;
       } else if (currentY < middlePoint) {
-        // Orta noktanın üstündeyse max snap point'e git
         targetY = screenHeight - YERTALEs.max;
         newYERTALE = YERTALEs.max;
-        animationConfig = { tension: 65, friction: 12 }; // Yumuşak genişleme
+        animationConfig = { tension: 65, friction: 12 };
       } else {
-        // Orta noktanın altındaysa min snap point'e git
         targetY = screenHeight - YERTALEs.min;
         newYERTALE = YERTALEs.min;
-        animationConfig = { tension: 75, friction: 11 }; // Yumuşak küçülme
+        animationConfig = { tension: 75, friction: 11 };
       }
     }
     
@@ -213,20 +238,19 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     }).start();
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     if (pagination && currentPage < pagination.totalPages && !postsLoading) {
       setCurrentPage(prev => prev + 1);
     }
-  };
+  }, [pagination, currentPage, postsLoading]);
 
-  // API doğrulama sonucunu izle
+  // Handle validation results
   useEffect(() => {
     if (isCheckingLocation && validationResult) {
       setIsCheckingLocation(false);
       
       if (validationResult.can_post && validationResult.is_within_radius) {
-        // Doğrulama başarılı - CreatePost ekranına git
-        onClose(); // Bottom sheet'i kapat
+        onClose();
         
         router.push({
           pathname: '/screens/CreatePost',
@@ -238,7 +262,6 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
           }
         });
       } else {
-        // Doğrulama başarısız
         const distance = validationResult.distance_meters || 0;
         const requiredDistance = validationResult.post_radius || 20;
         
@@ -251,9 +274,8 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
               text: 'Konumu Göster', 
               style: 'default',
               onPress: () => {
-                onClose();
-                if (onShowLocation && marker) {
-                  onShowLocation(marker.latitude, marker.longitude);
+                if (marker) {
+                  handleShowLocationInternal(marker.latitude, marker.longitude);
                 }
               }
             }
@@ -275,8 +297,8 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     }
   }, [validationResult, validationError, isCheckingLocation]);
 
-  // Lokasyon doğrulama ve post oluşturma - API ile
-  const handleCreatePost = async () => {
+  // Create post handler - moved from ExplorerScreen
+  const handleCreatePost = useCallback(async () => {
     if (!marker || !userLocation) {
       Alert.alert(
         'Konum İzni Gerekli',
@@ -287,14 +309,14 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
     }
 
     setIsCheckingLocation(true);
-  };
+  }, [marker, userLocation]);
 
-  const renderPostItem = ({ item }: { item: PostSummary }) => {
+  const renderPostItem = useCallback(({ item }: { item: PostSummary }) => {
     const cardWidth = (screenWidth - 48 - 16) / 3;
     
     return (
       <TouchableOpacity 
-        onPress={() => onPostPress(item)}
+        onPress={() => handlePostPress(item)}
         style={{ width: cardWidth }}
         className="mb-4"
       >
@@ -328,7 +350,6 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
             }}
           />
           
-          {/* Media Count & Type - Top Right */}
           <View 
             style={{
               position: 'absolute',
@@ -352,7 +373,6 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
             )}
           </View>
           
-          {/* Bottom Content */}
           <View 
             style={{
               position: 'absolute',
@@ -392,12 +412,12 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [handlePostPress]);
 
-  const renderTopUserItem = ({ item }: { item: TopUser }) => (
+  const renderTopUserItem = useCallback(({ item }: { item: TopUser }) => (
     <TouchableOpacity 
       className="items-center mr-4"
-      onPress={() => onUserPress(item.id.toString())}
+      onPress={() => handleUserPress(item.id.toString())}
     >
       <View className="w-16 h-16 rounded-full bg-blue-50 justify-center items-center border-2 border-blue-500 overflow-hidden">
         {item.avatar ? (
@@ -415,7 +435,7 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
       <Text className="text-gray-900 font-semibold mt-1">{item.username}</Text>
       <Text className="text-blue-600 text-sm">{item.total_points} pts</Text>
     </TouchableOpacity>
-  );
+  ), [handleUserPress]);
 
   if (!marker) return null;
 
@@ -481,9 +501,10 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
               </View>
             ) : placeDetail ? (
               <View className="flex-1">
-                {allPosts && allPosts.length > 0 ? (
+                {/* Check placePosts directly first, then allPosts */}
+                {(placePosts && placePosts.length > 0) || (allPosts && allPosts.length > 0) ? (
                   <FlatList
-                    data={allPosts}
+                    data={allPosts.length > 0 ? allPosts : placePosts}
                     numColumns={3}
                     keyExtractor={(item) => `post-${item.id}`}
                     renderItem={renderPostItem}
@@ -971,6 +992,14 @@ const MarkerBottomSheet: React.FC<MarkerBottomSheetProps> = ({
       </View>
     </Modal>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison for React.memo
+  return (
+    prevProps.isVisible === nextProps.isVisible &&
+    prevProps.marker?.id === nextProps.marker?.id &&
+    prevProps.onClose === nextProps.onClose &&
+    prevProps.onShowLocation === nextProps.onShowLocation
+  );
+});
 
 export default MarkerBottomSheet; 

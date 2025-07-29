@@ -1,8 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import BottomNavigationTabBar from '../../components/ui/bottom-navigation-tab-bar';
+import { useTranslation } from '@/utils/useTranslation';
 
 export default function TabLayout() {
+  const { t } = useTranslation();
+  
   return (
     <Tabs
       screenOptions={{
@@ -16,19 +19,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'Leaderboard',
+          title: t('leaderboard'),
         }}
       />
       <Tabs.Screen
         name="explorer"
         options={{
-          title: 'Explorer',
+          title: t('explorer'),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('profile'),
         }}
       />
     </Tabs>

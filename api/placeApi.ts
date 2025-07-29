@@ -26,16 +26,17 @@ export const useGetMarkers = (
   if (category) params.category = category;
   if (maxPlaces !== undefined) params.maxPlaces = maxPlaces;
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['markers', params], // daha sade ve anlamlı
-    queryFn: () =>
-      apiCall.get<MarkerResponse>('/places/nearby', { params }).then(res => res),
-    staleTime: 1000 * 10, // 10 saniye boyunca cache fresh kalır
-    enabled: enabled && latitude !== 0 && longitude !== 0, // Sadece enabled=true ve geçerli koordinatlar varsa çalıştır
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['markers', params],
+    queryFn: () => apiCall.get<MarkerResponse>('/places/nearby', { params }),
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    enabled: enabled && latitude !== 0 && longitude !== 0,
   });
-console.log({data});
-  
-  return { data, isLoading, error };
+
+  return { data, isLoading, error, refetch };
 };
 
 
@@ -45,11 +46,16 @@ console.log({data});
 
 
 
-export const useGetPlaceById = (placeId: number | undefined) => {
+export const useGetPlaceById = (placeId: number | undefined, enabled = true) => {
     const { data, isLoading, error } = useQuery({
         queryKey: ['place', placeId],
         queryFn: () => apiCall.get<PlaceDetailResponse>(`/places/${placeId}/profile`),
-        enabled: !!placeId
+        enabled: enabled && !!placeId,
+        staleTime: 1000 * 30, // 30 seconds cache - faster updates
+        gcTime: 1000 * 60 * 2, // 2 minutes garbage collection
+        refetchOnWindowFocus: false,
+        refetchOnMount: false, // Prevent refetch on remount
+        retry: 1, // Only retry once
     });
 
     

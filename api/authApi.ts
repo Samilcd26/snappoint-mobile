@@ -30,7 +30,6 @@ export const useLogin = () => {
       await AsyncStorage.setItem('access_token', data.access_token);
       await AsyncStorage.setItem('refresh_token', data.refresh_token);
       showToast({
-        title: 'Success',
         description: 'Login successful',
         action: 'success',
       });
@@ -51,7 +50,6 @@ export const useVerifyEmail = () => {
     },
     onError: (error: any) => {
       showToast({
-        title: 'Error',
         description: error?.error || 'Email verification failed',
         action: 'error',
       });
@@ -74,7 +72,6 @@ export const useRegisterEmailCheck = () => {
     onError: (error: any) => {
       console.log(error.response.data);
       showToast({
-        title: 'Error',
         description: error?.error || 'Email check failed',
         action: 'error',
       });
@@ -97,7 +94,6 @@ export const useRegisterUsernameCheck = () => {
     onError: (error: any) => {
       console.log(error.response.data);
       showToast({
-        title: 'Error',
         description: error?.error || 'Username check failed',
         action: 'error',
       });
@@ -126,15 +122,13 @@ export const useRegister = () => {
     },
     onSuccess: (data) => {
       showToast({
-        title: 'Success',
         description: 'Registration successful! Please login.',
         action: 'success',
       });
-      router.replace('/login');
+      router.replace('/screens/Auth/Login/Login');
     },
     onError: (error: any) => {
       showToast({
-        title: 'Error',
         description: error?.error || 'Registration failed',
         action: 'error',
       });
@@ -154,6 +148,12 @@ export const useGetUserInfo = () => {
       await AsyncStorage.setItem('user', JSON.stringify(user));
       return user;
     },
+    staleTime: 1000 * 60 * 10, // 10 dakika
+    gcTime: 1000 * 60 * 30, // 30 dakika
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 
   return query;

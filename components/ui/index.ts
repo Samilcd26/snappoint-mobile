@@ -15,3 +15,4 @@ export * from './slider';
 export * from './progress';
 export * from './modal';
 export * from './toast';
+export * from './LoaderOne';

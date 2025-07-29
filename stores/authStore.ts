@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
           };
 
           const redirectUri = AuthSession.makeRedirectUri({
-            scheme: 'com.snap-point.app', // Bu değeri app.json'da tanımlamanız gerekiyor
+            scheme: 'com.yertale.app', // Bu değeri app.json'da tanımlamanız gerekiyor
             path: 'auth',
           });
 
@@ -133,7 +133,7 @@ export const useAuthStore = create<AuthState>()(
           isLoggedIn: false
         });
         
-        router.replace('/login');
+        router.replace('/screens/Auth/Login/Login');
       },
       
       setUser: (user) => set({ user, isLoggedIn: true }),
@@ -180,10 +180,9 @@ export const useAuthCheck = () => {
   const { isLoggedIn, hydrate } = useAuthStore();
   
   useEffect(() => {
-    if (!isLoggedIn) {
-      hydrate();
-    }
-  }, [isLoggedIn, hydrate]);
+    // Sadece bir kere hydrate et
+    hydrate();
+  }, []); // Dependency array'i boş bırak
   
   return isLoggedIn;
 };

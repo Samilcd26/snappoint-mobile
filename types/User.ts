@@ -22,6 +22,7 @@ export interface UserDetail {
   isVerified: boolean;
   emailVerified: boolean;
   phoneVerified: boolean;
+  isPrivate: boolean;
   createdAt: string;
   isOwnProfile: boolean;
   isFollowing: boolean;

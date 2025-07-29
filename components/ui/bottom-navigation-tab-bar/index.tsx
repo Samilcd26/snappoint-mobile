@@ -9,7 +9,7 @@ const { width } = Dimensions.get('window');
 interface TabBarProps {
   state: {
     index: number;
-    routes: Array<{ name: string }>;
+    routes: { name: string }[];
   };
   navigation: {
     navigate: (name: string) => void;
